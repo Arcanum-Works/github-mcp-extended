@@ -105,6 +105,160 @@ func Test_MergePolicyRead(t *testing.T) {
 		assert.Contains(t, policy.Notes[0], "no merge method is available")
 	})
 
+	// Several rulesets can govern one branch at once and a pull request has to
+	// satisfy all of them, so their merge-method restrictions intersect rather
+	// than accumulate. A ruleset that names no methods restricts nothing.
+	t.Run("merge methods intersect across every applicable ruleset", func(t *testing.T) {
+		tests := []struct {
+			name                   string
+			repository             *github.Repository
+			branchRules            string
+			expectedRulesetMethods []string
+			expectedRestriction    bool
+			expectedEffective      []string
+			expectedSourceIDs      []int64
+			expectNoMethodNote     bool
+		}{
+			{
+				// Case A: the two rulesets overlap on a single method.
+				name: "two restricting rulesets are intersected, not unioned",
+				repository: &github.Repository{
+					DefaultBranch:    github.Ptr("main"),
+					AllowMergeCommit: github.Ptr(true),
+					AllowSquashMerge: github.Ptr(true),
+					AllowRebaseMerge: github.Ptr(true),
+				},
+				branchRules: `[
+					{"type":"pull_request","ruleset_source_type":"Repository","ruleset_source":"owner/repo","ruleset_id":1,
+					 "parameters":{"allowed_merge_methods":["merge","squash"]}},
+					{"type":"pull_request","ruleset_source_type":"Organization","ruleset_source":"owner","ruleset_id":2,
+					 "parameters":{"allowed_merge_methods":["squash","rebase"]}}
+				]`,
+				expectedRulesetMethods: []string{"squash"},
+				expectedRestriction:    true,
+				expectedEffective:      []string{"squash"},
+				expectedSourceIDs:      []int64{1, 2},
+			},
+			{
+				// Case B: the two rulesets share no method at all.
+				name: "rulesets that overlap on nothing leave no merge method",
+				repository: &github.Repository{
+					DefaultBranch:    github.Ptr("main"),
+					AllowMergeCommit: github.Ptr(true),
+					AllowSquashMerge: github.Ptr(true),
+					AllowRebaseMerge: github.Ptr(true),
+				},
+				branchRules: `[
+					{"type":"pull_request","ruleset_source_type":"Repository","ruleset_source":"owner/repo","ruleset_id":1,
+					 "parameters":{"allowed_merge_methods":["merge"]}},
+					{"type":"pull_request","ruleset_source_type":"Organization","ruleset_source":"owner","ruleset_id":2,
+					 "parameters":{"allowed_merge_methods":["squash"]}}
+				]`,
+				expectedRulesetMethods: nil,
+				expectedRestriction:    true,
+				expectedEffective:      nil,
+				expectedSourceIDs:      []int64{1, 2},
+				expectNoMethodNote:     true,
+			},
+			{
+				// Case C: silence is not a restriction, so the one ruleset that
+				// does restrict decides on its own.
+				name: "a ruleset that names no merge methods restricts none",
+				repository: &github.Repository{
+					DefaultBranch:    github.Ptr("main"),
+					AllowMergeCommit: github.Ptr(true),
+					AllowSquashMerge: github.Ptr(true),
+					AllowRebaseMerge: github.Ptr(true),
+				},
+				branchRules: `[
+					{"type":"pull_request","ruleset_source_type":"Organization","ruleset_source":"owner","ruleset_id":7,
+					 "parameters":{"required_approving_review_count":1}},
+					{"type":"pull_request","ruleset_source_type":"Repository","ruleset_source":"owner/repo","ruleset_id":1,
+					 "parameters":{"allowed_merge_methods":["squash"]}}
+				]`,
+				expectedRulesetMethods: []string{"squash"},
+				expectedRestriction:    true,
+				expectedEffective:      []string{"squash"},
+				expectedSourceIDs:      []int64{1, 7},
+			},
+			{
+				// Case D: the repository settings are a separate layer and
+				// narrow the ruleset's methods further.
+				name: "the repository settings narrow the ruleset's methods",
+				repository: &github.Repository{
+					DefaultBranch:    github.Ptr("main"),
+					AllowSquashMerge: github.Ptr(true),
+				},
+				branchRules: `[
+					{"type":"pull_request","ruleset_source_type":"Repository","ruleset_source":"owner/repo","ruleset_id":1,
+					 "parameters":{"allowed_merge_methods":["merge","squash"]}}
+				]`,
+				expectedRulesetMethods: []string{"merge", "squash"},
+				expectedRestriction:    true,
+				expectedEffective:      []string{"squash"},
+				expectedSourceIDs:      []int64{1},
+			},
+			{
+				// Case E: a governed branch whose rules say nothing about merge
+				// methods keeps every method the repository allows.
+				name: "an unrestricting ruleset leaves the repository's methods intact",
+				repository: &github.Repository{
+					DefaultBranch:    github.Ptr("main"),
+					AllowMergeCommit: github.Ptr(true),
+					AllowSquashMerge: github.Ptr(true),
+				},
+				branchRules: `[
+					{"type":"pull_request","ruleset_source_type":"Repository","ruleset_source":"owner/repo","ruleset_id":1,
+					 "parameters":{"required_approving_review_count":1}}
+				]`,
+				expectedRulesetMethods: nil,
+				expectedRestriction:    false,
+				expectedEffective:      []string{"merge", "squash"},
+				expectedSourceIDs:      []int64{1},
+			},
+		}
+
+		for _, tc := range tests {
+			t.Run(tc.name, func(t *testing.T) {
+				client := mustNewGHClient(t, NewMockedHTTPClient(
+					WithRequestMatch(getReposByOwnerByRepoForGovernanceTesting, tc.repository),
+					WithRequestMatch(getReposRulesBranchesByOwnerByRepoByRef, tc.branchRules),
+				))
+				deps := BaseDeps{Client: client}
+				handler := serverTool.Handler(deps)
+
+				request := createMCPRequest(map[string]any{"owner": "owner", "repo": "repo", "branch": "main"})
+				result, err := handler(ContextWithDeps(context.Background(), deps), &request)
+				require.NoError(t, err)
+				require.False(t, result.IsError, "unexpected tool error: %v", result.Content)
+
+				var policy MinimalMergePolicy
+				require.NoError(t, json.Unmarshal([]byte(getTextResult(t, result).Text), &policy))
+
+				assert.Equal(t, tc.expectedRestriction, policy.BranchRules.MergeMethodsRestricted)
+				assert.ElementsMatch(t, tc.expectedRulesetMethods, policy.BranchRules.AllowedMergeMethods)
+				assert.ElementsMatch(t, tc.expectedEffective, policy.EffectiveAllowedMergeMethods)
+
+				// Every contributing ruleset stays named whatever the merge
+				// methods worked out to.
+				sourceIDs := make([]int64, 0, len(policy.BranchRules.Sources))
+				for _, source := range policy.BranchRules.Sources {
+					sourceIDs = append(sourceIDs, source.RulesetID)
+				}
+				assert.ElementsMatch(t, tc.expectedSourceIDs, sourceIDs)
+
+				if tc.expectNoMethodNote {
+					require.NotEmpty(t, policy.Notes)
+					assert.Contains(t, policy.Notes[0], "no merge method is available")
+				} else {
+					for _, note := range policy.Notes {
+						assert.NotContains(t, note, "no merge method is available")
+					}
+				}
+			})
+		}
+	})
+
 	t.Run("an ungoverned branch reports the repository settings alone", func(t *testing.T) {
 		client := mustNewGHClient(t, NewMockedHTTPClient(
 			WithRequestMatch(getReposByOwnerByRepoForGovernanceTesting, &github.Repository{
