@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/github/github-mcp-server/internal/toolsnaps"
+	mcplog "github.com/github/github-mcp-server/pkg/log"
 	"github.com/github/github-mcp-server/pkg/translations"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -380,4 +381,16 @@ func Test_ActionsSecretToolsExposeNoValueField(t *testing.T) {
 	metadataJSON, err := json.Marshal(metadata)
 	require.NoError(t, err)
 	assert.NotContains(t, string(metadataJSON), "value")
+}
+
+// Test_ActionsSecretWriteDeclaresValueSensitive closes the loop between the
+// tool and the command logger: pkg/log redacts what the tool layer declares,
+// so the declaration itself has to be guarded here. Without it the plaintext
+// value would be written to the log file whenever --enable-command-logging is
+// on.
+func Test_ActionsSecretWriteDeclaresValueSensitive(t *testing.T) {
+	t.Parallel()
+
+	assert.True(t, mcplog.IsSensitiveToolParam("actions_secret_write", "value"),
+		"actions_secret_write must declare its value parameter sensitive so the command logger redacts it")
 }

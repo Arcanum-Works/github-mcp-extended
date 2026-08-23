@@ -742,7 +742,7 @@ The following sets of tools are available:
   - `owner`: Repository owner (username or organization name) (string, required)
   - `repo`: Repository name (string, required)
   - `scope`: Where the value lives: on the repository, or on one of its environments. Defaults to 'repository'. Organization scope is not available on this tool. (string, optional)
-  - `value`: The secret value. Required for 'create_or_update'. It is encrypted before transmission and never returned by any tool. (string, optional)
+  - `value`: The secret value. Required for 'create_or_update'. It is encrypted to the repository's or environment's public key before it leaves this server, is never returned by any tool, and is redacted from this server's logs. (string, optional)
 
 - **actions_secrets_read** - Read Actions secret metadata
   - **Required OAuth Scopes**: `repo`
