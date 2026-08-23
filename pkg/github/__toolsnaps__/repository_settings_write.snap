@@ -1,0 +1,132 @@
+{
+  "annotations": {
+    "destructiveHint": true,
+    "idempotentHint": false,
+    "readOnlyHint": false,
+    "title": "Change repository settings"
+  },
+  "description": "Change a repository's configuration: default branch, allowed merge methods, branch cleanup, auto-merge, and which features are enabled. Only the settings you name are changed; every omitted setting keeps its current value. Visibility and ownership transfers are not exposed by this tool.",
+  "inputSchema": {
+    "properties": {
+      "allow_auto_merge": {
+        "description": "Allow pull requests to be queued for automatic merge once requirements pass.",
+        "type": "boolean"
+      },
+      "allow_forking": {
+        "description": "Allow the repository to be forked.",
+        "type": "boolean"
+      },
+      "allow_merge_commit": {
+        "description": "Allow merging pull requests with a merge commit.",
+        "type": "boolean"
+      },
+      "allow_rebase_merge": {
+        "description": "Allow rebase merging pull requests.",
+        "type": "boolean"
+      },
+      "allow_squash_merge": {
+        "description": "Allow squash merging pull requests.",
+        "type": "boolean"
+      },
+      "allow_update_branch": {
+        "description": "Offer to update a pull request branch that is behind its base.",
+        "type": "boolean"
+      },
+      "archived": {
+        "description": "Archive the repository, making it read-only. Reversible by setting it back to false, but while archived no other write tool will succeed against this repository.",
+        "type": "boolean"
+      },
+      "default_branch": {
+        "description": "Branch to use as the default. The branch must already exist.",
+        "type": "string"
+      },
+      "delete_branch_on_merge": {
+        "description": "Delete the head branch automatically after a pull request merges.",
+        "type": "boolean"
+      },
+      "description": {
+        "description": "Short repository description.",
+        "type": "string"
+      },
+      "has_discussions": {
+        "description": "Enable Discussions.",
+        "type": "boolean"
+      },
+      "has_issues": {
+        "description": "Enable the Issues tab.",
+        "type": "boolean"
+      },
+      "has_projects": {
+        "description": "Enable the Projects tab.",
+        "type": "boolean"
+      },
+      "has_wiki": {
+        "description": "Enable the Wiki tab.",
+        "type": "boolean"
+      },
+      "homepage": {
+        "description": "Homepage URL.",
+        "type": "string"
+      },
+      "merge_commit_message": {
+        "description": "Default message body for merge commits.",
+        "enum": [
+          "PR_BODY",
+          "PR_TITLE",
+          "BLANK"
+        ],
+        "type": "string"
+      },
+      "merge_commit_title": {
+        "description": "Default title for merge commits.",
+        "enum": [
+          "PR_TITLE",
+          "MERGE_MESSAGE"
+        ],
+        "type": "string"
+      },
+      "owner": {
+        "description": "Repository owner (username or organization name)",
+        "type": "string"
+      },
+      "repo": {
+        "description": "Repository name",
+        "type": "string"
+      },
+      "squash_merge_commit_message": {
+        "description": "Default message body for squash merge commits.",
+        "enum": [
+          "PR_BODY",
+          "COMMIT_MESSAGES",
+          "BLANK"
+        ],
+        "type": "string"
+      },
+      "squash_merge_commit_title": {
+        "description": "Default title for squash merge commits.",
+        "enum": [
+          "PR_TITLE",
+          "COMMIT_OR_PR_TITLE"
+        ],
+        "type": "string"
+      },
+      "topics": {
+        "description": "Repository topics. Replaces the current list; an empty array clears it.",
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "web_commit_signoff_required": {
+        "description": "Require a sign-off on web-based commits.",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "owner",
+      "repo"
+    ],
+    "type": "object"
+  },
+  "name": "repository_settings_write"
+}

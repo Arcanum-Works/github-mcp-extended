@@ -1,0 +1,71 @@
+{
+  "annotations": {
+    "idempotentHint": false,
+    "readOnlyHint": true,
+    "title": "Read repository access"
+  },
+  "description": "Read who has access to a repository: list collaborators, resolve one user's effective permission, or list the teams with repository access.",
+  "inputSchema": {
+    "properties": {
+      "affiliation": {
+        "description": "Which collaborators to list: 'direct' for those granted access on the repository itself, 'outside' for collaborators who are not organization members, 'all' (default) for everyone visible.",
+        "enum": [
+          "outside",
+          "direct",
+          "all"
+        ],
+        "type": "string"
+      },
+      "method": {
+        "description": "The method to execute:\n- list_collaborators: users with access, and the role each holds\n- get_permission: one user's effective permission, including access inherited from a team or from organization membership\n- list_teams: teams granted access to the repository",
+        "enum": [
+          "list_collaborators",
+          "get_permission",
+          "list_teams"
+        ],
+        "type": "string"
+      },
+      "owner": {
+        "description": "Repository owner (username or organization name)",
+        "type": "string"
+      },
+      "page": {
+        "description": "Page number for pagination (min 1)",
+        "minimum": 1,
+        "type": "number"
+      },
+      "perPage": {
+        "description": "Results per page for pagination (min 1, max 100)",
+        "maximum": 100,
+        "minimum": 1,
+        "type": "number"
+      },
+      "permission": {
+        "description": "Only list collaborators holding this role. Used by 'list_collaborators'.",
+        "enum": [
+          "pull",
+          "triage",
+          "push",
+          "maintain",
+          "admin"
+        ],
+        "type": "string"
+      },
+      "repo": {
+        "description": "Repository name",
+        "type": "string"
+      },
+      "username": {
+        "description": "GitHub login. Required for 'get_permission'.",
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "owner",
+      "repo"
+    ],
+    "type": "object"
+  },
+  "name": "collaborators_read"
+}

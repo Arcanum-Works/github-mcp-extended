@@ -603,6 +603,7 @@ The following sets of tools are available:
 | <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/organization-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/organization-light.png"><img src="pkg/octicons/icons/organization-light.png" width="20" height="20" alt="organization"></picture> | `orgs` | GitHub Organization related tools |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/project-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/project-light.png"><img src="pkg/octicons/icons/project-light.png" width="20" height="20" alt="project"></picture> | `projects` | GitHub Projects related tools |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/git-pull-request-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/git-pull-request-light.png"><img src="pkg/octicons/icons/git-pull-request-light.png" width="20" height="20" alt="git-pull-request"></picture> | `pull_requests` | GitHub Pull Request related tools |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/shield-lock-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/shield-lock-light.png"><img src="pkg/octicons/icons/shield-lock-light.png" width="20" height="20" alt="shield-lock"></picture> | `repo_governance` | Repository governance: rulesets and branch protection, repository settings, collaborator and team access, and merge policy |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/repo-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/repo-light.png"><img src="pkg/octicons/icons/repo-light.png" width="20" height="20" alt="repo"></picture> | `repos` | GitHub Repository related tools |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/shield-lock-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/shield-lock-light.png"><img src="pkg/octicons/icons/shield-lock-light.png" width="20" height="20" alt="shield-lock"></picture> | `secret_protection` | Secret protection related tools, such as GitHub Secret Scanning |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/shield-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/shield-light.png"><img src="pkg/octicons/icons/shield-light.png" width="20" height="20" alt="shield"></picture> | `security_advisories` | Security advisories related tools |
@@ -1268,6 +1269,106 @@ The following sets of tools are available:
   - `owner`: Repository owner (string, required)
   - `pullNumber`: Pull request number (number, required)
   - `repo`: Repository name (string, required)
+
+</details>
+
+<details>
+
+<summary><picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/shield-lock-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/shield-lock-light.png"><img src="pkg/octicons/icons/shield-lock-light.png" width="20" height="20" alt="shield-lock"></picture> Repo Governance</summary>
+
+- **collaborator_write** - Manage repository access
+  - **Required OAuth Scopes**: `repo`
+  - `method`: The operation to perform:
+    - add_user: add a collaborator, or change the role of an existing one
+    - remove_user: revoke a user's direct access
+    - set_team: grant a team access, or change the role it holds
+    - remove_team: revoke a team's access (string, required)
+  - `org`: Organization that owns the team. Defaults to the repository owner. (string, optional)
+  - `owner`: Repository owner (username or organization name) (string, required)
+  - `permission`: Role to grant: 'pull' read, 'triage' manage issues and pull requests, 'push' write, 'maintain' manage without destructive actions, 'admin' full control. Defaults to 'push'. (string, optional)
+  - `repo`: Repository name (string, required)
+  - `team_slug`: Team slug as it appears in the team's URL, not its display name. Required for 'set_team' and 'remove_team'. (string, optional)
+  - `username`: GitHub login. Required for 'add_user' and 'remove_user'. (string, optional)
+
+- **collaborators_read** - Read repository access
+  - **Required OAuth Scopes**: `repo`
+  - `affiliation`: Which collaborators to list: 'direct' for those granted access on the repository itself, 'outside' for collaborators who are not organization members, 'all' (default) for everyone visible. (string, optional)
+  - `method`: The method to execute:
+    - list_collaborators: users with access, and the role each holds
+    - get_permission: one user's effective permission, including access inherited from a team or from organization membership
+    - list_teams: teams granted access to the repository (string, required)
+  - `owner`: Repository owner (username or organization name) (string, required)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
+  - `permission`: Only list collaborators holding this role. Used by 'list_collaborators'. (string, optional)
+  - `repo`: Repository name (string, required)
+  - `username`: GitHub login. Required for 'get_permission'. (string, optional)
+
+- **merge_policy_read** - Read merge policy for a branch
+  - **Required OAuth Scopes**: `repo`
+  - `branch`: The branch a pull request would merge into. Defaults to the repository's default branch. (string, optional)
+  - `owner`: Repository owner (username or organization name) (string, required)
+  - `repo`: Repository name (string, required)
+
+- **repository_settings_read** - Read repository settings
+  - **Required OAuth Scopes**: `repo`
+  - `owner`: Repository owner (username or organization name) (string, required)
+  - `repo`: Repository name (string, required)
+
+- **repository_settings_write** - Change repository settings
+  - **Required OAuth Scopes**: `repo`
+  - `allow_auto_merge`: Allow pull requests to be queued for automatic merge once requirements pass. (boolean, optional)
+  - `allow_forking`: Allow the repository to be forked. (boolean, optional)
+  - `allow_merge_commit`: Allow merging pull requests with a merge commit. (boolean, optional)
+  - `allow_rebase_merge`: Allow rebase merging pull requests. (boolean, optional)
+  - `allow_squash_merge`: Allow squash merging pull requests. (boolean, optional)
+  - `allow_update_branch`: Offer to update a pull request branch that is behind its base. (boolean, optional)
+  - `archived`: Archive the repository, making it read-only. Reversible by setting it back to false, but while archived no other write tool will succeed against this repository. (boolean, optional)
+  - `default_branch`: Branch to use as the default. The branch must already exist. (string, optional)
+  - `delete_branch_on_merge`: Delete the head branch automatically after a pull request merges. (boolean, optional)
+  - `description`: Short repository description. (string, optional)
+  - `has_discussions`: Enable Discussions. (boolean, optional)
+  - `has_issues`: Enable the Issues tab. (boolean, optional)
+  - `has_projects`: Enable the Projects tab. (boolean, optional)
+  - `has_wiki`: Enable the Wiki tab. (boolean, optional)
+  - `homepage`: Homepage URL. (string, optional)
+  - `merge_commit_message`: Default message body for merge commits. (string, optional)
+  - `merge_commit_title`: Default title for merge commits. (string, optional)
+  - `owner`: Repository owner (username or organization name) (string, required)
+  - `repo`: Repository name (string, required)
+  - `squash_merge_commit_message`: Default message body for squash merge commits. (string, optional)
+  - `squash_merge_commit_title`: Default title for squash merge commits. (string, optional)
+  - `topics`: Repository topics. Replaces the current list; an empty array clears it. (string[], optional)
+  - `web_commit_signoff_required`: Require a sign-off on web-based commits. (boolean, optional)
+
+- **ruleset_write** - Write repository rulesets
+  - **Required OAuth Scopes**: `repo`
+  - `bypass_actors`: Actors allowed to bypass the ruleset. Replaces the current list when given; pass an empty array to remove every bypass. (object[], optional)
+  - `enforcement`: Whether the ruleset is enforced. 'evaluate' reports violations without blocking (available on some plans). Defaults to 'active' on create. Required for 'set_enforcement'. (string, optional)
+  - `exclude_refs`: Ref patterns exempted from the ruleset. Replaces the current exclude list when given. (string[], optional)
+  - `include_refs`: Ref patterns the ruleset applies to, e.g. ['refs/heads/main', 'refs/heads/release/*'] or the special value '~DEFAULT_BRANCH' or '~ALL'. Replaces the current include list when given. (string[], optional)
+  - `method`: Operation to perform: 'create', 'update', 'delete', or 'set_enforcement' (string, required)
+  - `name`: Ruleset name. Required for 'create'. For the other methods it identifies the ruleset when ruleset_id is not given; combined with ruleset_id on 'update' it renames the ruleset. (string, optional)
+  - `owner`: Repository owner (username or organization name) (string, required)
+  - `repo`: Repository name (string, required)
+  - `rules`: The rules to enforce. Only the keys you provide are changed; every other rule on the ruleset, including rules this tool does not model, is preserved. (object, optional)
+  - `ruleset_id`: Numeric ruleset ID. Identifies the ruleset for 'update', 'delete' and 'set_enforcement'; takes precedence over name. (number, optional)
+  - `target`: What the ruleset applies to. Defaults to 'branch' on create. (string, optional)
+
+- **rulesets_read** - Read repository rulesets
+  - **Required OAuth Scopes**: `repo`
+  - `branch`: Branch name. Required for 'get_branch_rules'. (string, optional)
+  - `includes_parents`: Include rulesets inherited from the organization or enterprise. Defaults to true. Used by 'list_rulesets' and 'get_ruleset'. (boolean, optional)
+  - `method`: The method to execute:
+    - list_rulesets: every ruleset applying to the repository
+    - get_ruleset: one ruleset in full, by ruleset_id or by name
+    - get_branch_rules: the rules in force on a branch, whatever ruleset they come from (string, required)
+  - `name`: Ruleset name. Identifies the ruleset for 'get_ruleset' when ruleset_id is not given. (string, optional)
+  - `owner`: Repository owner (username or organization name) (string, required)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
+  - `repo`: Repository name (string, required)
+  - `ruleset_id`: Numeric ruleset ID. Identifies the ruleset for 'get_ruleset'; takes precedence over name. (number, optional)
 
 </details>
 

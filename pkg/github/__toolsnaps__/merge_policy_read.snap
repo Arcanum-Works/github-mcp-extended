@@ -1,0 +1,30 @@
+{
+  "annotations": {
+    "idempotentHint": false,
+    "readOnlyHint": true,
+    "title": "Read merge policy for a branch"
+  },
+  "description": "Read the governance policy that decides whether a pull request into a branch can merge: which merge methods the repository and its rulesets both allow, how many approvals are required, whether conversations must be resolved, which status checks must pass, and what is blocked outright. This reports policy, not the state of any particular pull request; use 'pull_request_read' for that.",
+  "inputSchema": {
+    "properties": {
+      "branch": {
+        "description": "The branch a pull request would merge into. Defaults to the repository's default branch.",
+        "type": "string"
+      },
+      "owner": {
+        "description": "Repository owner (username or organization name)",
+        "type": "string"
+      },
+      "repo": {
+        "description": "Repository name",
+        "type": "string"
+      }
+    },
+    "required": [
+      "owner",
+      "repo"
+    ],
+    "type": "object"
+  },
+  "name": "merge_policy_read"
+}

@@ -125,6 +125,14 @@ var (
 		Icon:             "project",
 		InstructionsFunc: generateProjectsToolsetInstructions,
 	}
+	// ToolsetMetadataRepoGovernance is not enabled by default: its tools
+	// change who may reach a repository and under what rules, which is a
+	// different class of authority from editing a repository's contents.
+	ToolsetMetadataRepoGovernance = inventory.ToolsetMetadata{
+		ID:          "repo_governance",
+		Description: "Repository governance: rulesets and branch protection, repository settings, collaborator and team access, and merge policy",
+		Icon:        "shield-lock",
+	}
 	ToolsetMetadataStargazers = inventory.ToolsetMetadata{
 		ID:          "stargazers",
 		Description: "GitHub Stargazers related tools",
@@ -335,6 +343,15 @@ func AllTools(t translations.TranslationHelperFunc, opts ...ToolOption) []invent
 		ProjectsList(t),
 		ProjectsGet(t),
 		ProjectsWrite(t),
+
+		// Repository governance tools
+		RulesetsRead(t),
+		RulesetWrite(t),
+		RepositorySettingsRead(t),
+		RepositorySettingsWrite(t),
+		CollaboratorsRead(t),
+		CollaboratorWrite(t),
+		MergePolicyRead(t),
 
 		// Label tools
 		GetLabel(t),
