@@ -60,7 +60,7 @@ func convertToMinimalActionsVariable(variable *github.ActionsVariable, scope str
 // same way.
 func actionsScopeSchema(includeOrg bool) *jsonschema.Schema {
 	values := []any{actionsScopeRepository, actionsScopeEnvironment}
-	description := "Where the value lives: on the repository, or on one of its environments. Defaults to 'repository'."
+	description := "Where the value lives: on the repository, or on one of its environments. Defaults to 'repository'. Organization scope is not available on this tool."
 	if includeOrg {
 		values = append(values, actionsScopeOrg)
 		description = "Where the value lives: on the repository, on one of its environments, or on the organization. Defaults to 'repository'."
@@ -95,7 +95,11 @@ func resolveActionsScope(args map[string]any, allowOrg bool) (scope, environment
 		return scope, environment, "", nil
 	case actionsScopeOrg:
 		if !allowOrg {
-			return "", "", "", utils.NewToolResultError("scope 'organization' is not supported by this tool")
+			// Organization scope is deliberately out of reach here. This
+			// helper is shared by the variable and secret tools, so the
+			// message stays about the scope; each tool's own description
+			// says what, if anything, can reach organization storage.
+			return "", "", "", utils.NewToolResultError("scope 'organization' is not supported by this tool: only 'repository' and 'environment' can be used here")
 		}
 		org, err = OptionalParam[string](args, "org")
 		if err != nil {
@@ -268,7 +272,8 @@ func ActionsVariableWrite(t translations.TranslationHelperFunc) inventory.Server
 		ToolsetMetadataActionsAdmin,
 		mcp.Tool{
 			Name: "actions_variable_write",
-			Description: t("TOOL_ACTIONS_VARIABLE_WRITE_DESCRIPTION", "Set or remove a GitHub Actions variable on a repository, one of its environments, or the organization. "+
+			Description: t("TOOL_ACTIONS_VARIABLE_WRITE_DESCRIPTION", "Set or remove a GitHub Actions variable on a repository or one of its environments. "+
+				"Organization variables are read-only here: 'actions_variables_read' reports them, but no tool writes them. "+
 				"Creating and updating share one method: a variable that does not exist is created. Use 'actions_secret_write' for values that must stay secret."),
 			Annotations: &mcp.ToolAnnotations{
 				Title:           t("TOOL_ACTIONS_VARIABLE_WRITE_USER_TITLE", "Write Actions variables"),
@@ -289,7 +294,7 @@ func ActionsVariableWrite(t translations.TranslationHelperFunc) inventory.Server
 					},
 					"repo": {
 						Type:        "string",
-						Description: "Repository name. Not needed when scope is 'organization'.",
+						Description: "Repository name",
 					},
 					"scope": actionsScopeSchema(false),
 					"environment_name": {

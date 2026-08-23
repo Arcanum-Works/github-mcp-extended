@@ -229,6 +229,77 @@ func Test_ActionsConfigWrite(t *testing.T) {
 		require.False(t, result.IsError, "unexpected tool error: %v", result.Content)
 	})
 
+	t.Run("a failed allow-list read aborts before anything is written", func(t *testing.T) {
+		putCalled := false
+		client := mustNewGHClient(t, NewMockedHTTPClient(
+			WithRequestMatchHandler(getReposActionsSelectedActionsByOwnerByRepo,
+				http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusInternalServerError)
+					_, _ = w.Write([]byte(`{"message": "Server Error"}`))
+				}),
+			),
+			WithRequestMatchHandler(putReposActionsSelectedActionsByOwnerByRepo,
+				http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+					// Reaching here means the tool wrote a policy it had
+					// assembled without knowing the current one, which would
+					// clear the flags it failed to read.
+					putCalled = true
+					t.Error("the allowed actions policy must not be written when the current one could not be read")
+					w.WriteHeader(http.StatusOK)
+					_, _ = w.Write([]byte(`{}`))
+				}),
+			),
+		))
+		deps := BaseDeps{Client: client}
+		handler := serverTool.Handler(deps)
+
+		request := createMCPRequest(map[string]any{
+			"method":           "set_allowed_actions",
+			"owner":            "owner",
+			"repo":             "repo",
+			"patterns_allowed": []any{"octo-org/*"},
+		})
+		result, err := handler(ContextWithDeps(context.Background(), deps), &request)
+		require.NoError(t, err)
+		assert.Contains(t, getErrorResult(t, result).Text, "failed to read the current allowed actions policy")
+		assert.False(t, putCalled, "no write may follow a failed prerequisite read")
+	})
+
+	t.Run("a conflict on the allow-list read explains why nothing was written", func(t *testing.T) {
+		putCalled := false
+		client := mustNewGHClient(t, NewMockedHTTPClient(
+			WithRequestMatchHandler(getReposActionsSelectedActionsByOwnerByRepo,
+				http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+					// GitHub serves this policy only while allowed_actions is
+					// "selected".
+					w.WriteHeader(http.StatusConflict)
+					_, _ = w.Write([]byte(`{"message": "Conflict"}`))
+				}),
+			),
+			WithRequestMatchHandler(putReposActionsSelectedActionsByOwnerByRepo,
+				http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+					putCalled = true
+					t.Error("the allowed actions policy must not be written after a conflicting read")
+					w.WriteHeader(http.StatusOK)
+					_, _ = w.Write([]byte(`{}`))
+				}),
+			),
+		))
+		deps := BaseDeps{Client: client}
+		handler := serverTool.Handler(deps)
+
+		request := createMCPRequest(map[string]any{
+			"method":               "set_allowed_actions",
+			"owner":                "owner",
+			"repo":                 "repo",
+			"github_owned_allowed": true,
+		})
+		result, err := handler(ContextWithDeps(context.Background(), deps), &request)
+		require.NoError(t, err)
+		assert.Contains(t, getErrorResult(t, result).Text, "allowed_actions is not 'selected'")
+		assert.False(t, putCalled, "no write may follow a failed prerequisite read")
+	})
+
 	t.Run("set workflow permissions", func(t *testing.T) {
 		client := mustNewGHClient(t, NewMockedHTTPClient(
 			WithRequestMatchHandler(putReposActionsWorkflowPermissionsByOwnerByRepo,

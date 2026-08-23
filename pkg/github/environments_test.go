@@ -3,7 +3,9 @@ package github
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/github/github-mcp-server/internal/toolsnaps"
@@ -43,6 +45,47 @@ const stagingEnvironment = `{
   ],
   "deployment_branch_policy": {"protected_branches": false, "custom_branch_policies": true}
 }`
+
+// firstPageBranchPolicyCount is a full page of custom branch policies, which is
+// what makes GitHub send a second one.
+const firstPageBranchPolicyCount = 100
+
+// firstPageBranchPatterns are the pattern names on page one, in the order the
+// API returns them.
+func firstPageBranchPatterns() []string {
+	names := make([]string, 0, firstPageBranchPolicyCount)
+	for i := range firstPageBranchPolicyCount {
+		names = append(names, fmt.Sprintf("page-one/%03d", i+1))
+	}
+	return names
+}
+
+// pagedBranchPolicyHandler serves the deployment branch policies in two pages,
+// linking the first to the second the way the API does, and records which pages
+// were actually asked for.
+func pagedBranchPolicyHandler(pagesSeen *[]string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		page := r.URL.Query().Get("page")
+		if page == "" {
+			page = "1"
+		}
+		*pagesSeen = append(*pagesSeen, page)
+
+		if page == "2" {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"total_count":102,"branch_policies":[{"id":201,"name":"release/*"},{"id":202,"name":"legacy/*"}]}`))
+			return
+		}
+
+		entries := make([]string, 0, firstPageBranchPolicyCount)
+		for i, name := range firstPageBranchPatterns() {
+			entries = append(entries, fmt.Sprintf(`{"id":%d,"name":%q}`, i+1, name))
+		}
+		w.Header().Set("Link", `<https://api.github.com`+r.URL.Path+`?per_page=100&page=2>; rel="next", <https://api.github.com`+r.URL.Path+`?per_page=100&page=2>; rel="last"`)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"total_count":102,"branch_policies":[` + strings.Join(entries, ",") + `]}`))
+	}
+}
 
 func Test_EnvironmentsRead(t *testing.T) {
 	t.Parallel()
@@ -105,6 +148,34 @@ func Test_EnvironmentsRead(t *testing.T) {
 		var env MinimalEnvironment
 		require.NoError(t, json.Unmarshal([]byte(getTextResult(t, result).Text), &env))
 		assert.Equal(t, []string{"main", "release/*"}, env.CustomBranchPatterns)
+	})
+
+	t.Run("get environment reports patterns from every page", func(t *testing.T) {
+		var pagesSeen []string
+		client := mustNewGHClient(t, NewMockedHTTPClient(
+			WithRequestMatch(getReposEnvironmentsByOwnerByRepoByName, stagingEnvironment),
+			WithRequestMatchHandler(getReposEnvBranchPoliciesByOwnerByRepoByName, pagedBranchPolicyHandler(&pagesSeen)),
+		))
+		deps := BaseDeps{Client: client}
+		handler := serverTool.Handler(deps)
+
+		request := createMCPRequest(map[string]any{
+			"method":           "get_environment",
+			"owner":            "owner",
+			"repo":             "repo",
+			"environment_name": "staging",
+		})
+		result, err := handler(ContextWithDeps(context.Background(), deps), &request)
+		require.NoError(t, err)
+		require.False(t, result.IsError, "unexpected tool error: %v", result.Content)
+
+		assert.Equal(t, []string{"1", "2"}, pagesSeen, "the second page must be fetched")
+
+		var env MinimalEnvironment
+		require.NoError(t, json.Unmarshal([]byte(getTextResult(t, result).Text), &env))
+		expected := firstPageBranchPatterns()
+		expected = append(expected, "release/*", "legacy/*")
+		assert.Equal(t, expected, env.CustomBranchPatterns)
 	})
 
 	t.Run("get without a name is rejected", func(t *testing.T) {
@@ -366,6 +437,105 @@ func Test_EnvironmentWrite(t *testing.T) {
 		var env MinimalEnvironment
 		require.NoError(t, json.Unmarshal([]byte(getTextResult(t, result).Text), &env))
 		assert.Equal(t, []string{"main", "release/*"}, env.CustomBranchPatterns)
+	})
+
+	t.Run("reconciliation sees patterns beyond the first page", func(t *testing.T) {
+		var pagesSeen []string
+		created := []string{}
+		deleted := []string{}
+
+		client := mustNewGHClient(t, NewMockedHTTPClient(
+			WithRequestMatch(getReposEnvironmentsByOwnerByRepoByName, stagingEnvironment),
+			WithRequestMatch(putReposEnvironmentsByOwnerByRepoByName, stagingEnvironment),
+			WithRequestMatchHandler(getReposEnvBranchPoliciesByOwnerByRepoByName, pagedBranchPolicyHandler(&pagesSeen)),
+			WithRequestMatchHandler(postReposEnvBranchPoliciesByOwnerByRepoByName,
+				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					var payload map[string]any
+					require.NoError(t, json.NewDecoder(r.Body).Decode(&payload))
+					created = append(created, payload["name"].(string))
+
+					w.WriteHeader(http.StatusOK)
+					_, _ = w.Write([]byte(`{"id":300,"name":"main"}`))
+				}),
+			),
+			WithRequestMatchHandler(deleteReposEnvBranchPolicyByOwnerByRepoByNameByI,
+				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					deleted = append(deleted, r.URL.Path)
+					w.WriteHeader(http.StatusNoContent)
+				}),
+			),
+		))
+		deps := BaseDeps{Client: client}
+		handler := serverTool.Handler(deps)
+
+		// Everything on page one is kept, "release/*" lives on page two and is
+		// kept too, "main" is new, and "legacy/*" from page two is dropped.
+		wanted := firstPageBranchPatterns()
+		wanted = append(wanted, "release/*", "main")
+		wantedArgs := make([]any, 0, len(wanted))
+		for _, pattern := range wanted {
+			wantedArgs = append(wantedArgs, pattern)
+		}
+
+		request := createMCPRequest(map[string]any{
+			"method":                 "create_or_update",
+			"owner":                  "owner",
+			"repo":                   "repo",
+			"environment_name":       "staging",
+			"custom_branch_patterns": wantedArgs,
+		})
+		result, err := handler(ContextWithDeps(context.Background(), deps), &request)
+		require.NoError(t, err)
+		require.False(t, result.IsError, "unexpected tool error: %v", result.Content)
+
+		assert.Equal(t, []string{"1", "2"}, pagesSeen, "reconciliation must read every page before diffing")
+		// "release/*" was only ever visible on page two; creating it again is
+		// exactly the bug a single-page read causes.
+		assert.Equal(t, []string{"main"}, created)
+		// "legacy/*" is also only on page two, and must still be removed.
+		require.Len(t, deleted, 1)
+		assert.True(t, strings.HasSuffix(deleted[0], "/202"), "expected the page-two policy 202 to be deleted, got %s", deleted[0])
+
+		var env MinimalEnvironment
+		require.NoError(t, json.Unmarshal([]byte(getTextResult(t, result).Text), &env))
+		assert.Equal(t, wanted, env.CustomBranchPatterns)
+	})
+
+	t.Run("a failed read of the environment aborts before anything is written", func(t *testing.T) {
+		putCalled := false
+		client := mustNewGHClient(t, NewMockedHTTPClient(
+			WithRequestMatchHandler(getReposEnvironmentsByOwnerByRepoByName,
+				http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusInternalServerError)
+					_, _ = w.Write([]byte(`{"message": "Server Error"}`))
+				}),
+			),
+			WithRequestMatchHandler(putReposEnvironmentsByOwnerByRepoByName,
+				http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+					// The update endpoint clears every field it is not sent,
+					// so writing without the current configuration would wipe
+					// the wait timer, the reviewers and the branch policy.
+					putCalled = true
+					t.Error("the environment must not be written when its current configuration could not be read")
+					w.WriteHeader(http.StatusOK)
+					_, _ = w.Write([]byte(stagingEnvironment))
+				}),
+			),
+		))
+		deps := BaseDeps{Client: client}
+		handler := serverTool.Handler(deps)
+
+		request := createMCPRequest(map[string]any{
+			"method":            "create_or_update",
+			"owner":             "owner",
+			"repo":              "repo",
+			"environment_name":  "staging",
+			"can_admins_bypass": true,
+		})
+		result, err := handler(ContextWithDeps(context.Background(), deps), &request)
+		require.NoError(t, err)
+		assert.Contains(t, getErrorResult(t, result).Text, "failed to read environment 'staging' before updating it")
+		assert.False(t, putCalled, "no write may follow a failed prerequisite read")
 	})
 
 	t.Run("delete an environment", func(t *testing.T) {

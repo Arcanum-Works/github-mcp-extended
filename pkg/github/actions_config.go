@@ -3,6 +3,7 @@ package github
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 
 	ghErrors "github.com/github/github-mcp-server/pkg/errors"
@@ -281,14 +282,28 @@ func ActionsConfigWrite(t translations.TranslationHelperFunc) inventory.ServerTo
 
 			case actionsConfigMethodSetAllowedActions:
 				// This endpoint replaces the policy wholesale, so the current
-				// one is read first and only the named fields are changed.
-				allowed := github.ActionsAllowed{}
+				// one is read first and only the named fields are changed. A
+				// read that fails aborts the whole operation: a policy
+				// assembled from nothing would silently clear whatever the
+				// repository has configured today.
 				current, resp, err := client.Repositories.GetActionsAllowed(ctx, owner, repo)
-				if err == nil {
-					_ = resp.Body.Close()
-					allowed.GithubOwnedAllowed = current.GithubOwnedAllowed
-					allowed.VerifiedAllowed = current.VerifiedAllowed
-					allowed.PatternsAllowed = current.PatternsAllowed
+				if err != nil {
+					if resp != nil && resp.StatusCode == http.StatusConflict {
+						// GitHub only serves this policy while allowed_actions
+						// is "selected"; say so rather than passing on a bare
+						// conflict.
+						return utils.NewToolResultError("cannot read the current allowed actions policy because allowed_actions is not 'selected', so nothing was changed. Run set_permissions with allowed_actions 'selected' first, then set the allow-list."), nil, nil
+					}
+					return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to read the current allowed actions policy, so it was left unchanged", resp, err), nil, nil
+				}
+				_ = resp.Body.Close()
+
+				// Start from the state that was actually read back, then layer
+				// the caller's explicit changes on top of it.
+				allowed := github.ActionsAllowed{
+					GithubOwnedAllowed: current.GithubOwnedAllowed,
+					VerifiedAllowed:    current.VerifiedAllowed,
+					PatternsAllowed:    current.PatternsAllowed,
 				}
 
 				for key, target := range map[string]**bool{

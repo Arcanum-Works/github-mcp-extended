@@ -711,7 +711,7 @@ The following sets of tools are available:
   - `name`: Secret name, e.g. 'DEPLOY_TOKEN'. (string, required)
   - `owner`: Repository owner (username or organization name) (string, required)
   - `repo`: Repository name (string, required)
-  - `scope`: Where the value lives: on the repository, or on one of its environments. Defaults to 'repository'. (string, optional)
+  - `scope`: Where the value lives: on the repository, or on one of its environments. Defaults to 'repository'. Organization scope is not available on this tool. (string, optional)
   - `value`: The secret value. Required for 'create_or_update'. It is encrypted before transmission and never returned by any tool. (string, optional)
 
 - **actions_secrets_read** - Read Actions secret metadata
@@ -723,7 +723,7 @@ The following sets of tools are available:
   - `page`: Page number for pagination (min 1) (number, optional)
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `repo`: Repository name (string, required)
-  - `scope`: Where the value lives: on the repository, or on one of its environments. Defaults to 'repository'. (string, optional)
+  - `scope`: Where the value lives: on the repository, or on one of its environments. Defaults to 'repository'. Organization scope is not available on this tool. (string, optional)
 
 - **actions_variable_write** - Write Actions variables
   - **Required OAuth Scopes**: `repo`
@@ -731,8 +731,8 @@ The following sets of tools are available:
   - `method`: Operation to perform: 'create_or_update' or 'delete' (string, required)
   - `name`: Variable name. (string, required)
   - `owner`: Repository owner (username or organization name) (string, required)
-  - `repo`: Repository name. Not needed when scope is 'organization'. (string, required)
-  - `scope`: Where the value lives: on the repository, or on one of its environments. Defaults to 'repository'. (string, optional)
+  - `repo`: Repository name (string, required)
+  - `scope`: Where the value lives: on the repository, or on one of its environments. Defaults to 'repository'. Organization scope is not available on this tool. (string, optional)
   - `value`: Variable value. Required for 'create_or_update'. (string, optional)
 
 - **actions_variables_read** - Read Actions variables

@@ -8,6 +8,7 @@ import (
 
 	"github.com/github/github-mcp-server/internal/toolsnaps"
 	"github.com/github/github-mcp-server/pkg/translations"
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,6 +22,9 @@ const (
 	getReposEnvVariablesByOwnerByRepoByEnv        = "GET /repos/{owner}/{repo}/environments/{environment_name}/variables"
 	postReposEnvVariablesByOwnerByRepoByEnv       = "POST /repos/{owner}/{repo}/environments/{environment_name}/variables"
 	getOrgsActionsVariablesByOrg                  = "GET /orgs/{org}/actions/variables"
+	postOrgsActionsVariablesByOrg                 = "POST /orgs/{org}/actions/variables"
+	patchOrgsActionsVariablesByOrgByName          = "PATCH /orgs/{org}/actions/variables/{name}"
+	delOrgsActionsVariablesByOrgByName            = "DELETE /orgs/{org}/actions/variables/{name}"
 )
 
 func Test_ActionsVariablesRead(t *testing.T) {
@@ -299,21 +303,55 @@ func Test_ActionsVariableWrite(t *testing.T) {
 		assert.Contains(t, getErrorResult(t, result).Text, "value")
 	})
 
-	t.Run("organization scope is not offered by the write tool", func(t *testing.T) {
-		client := mustNewGHClient(t, NewMockedHTTPClient())
+	t.Run("the schema does not offer organization scope", func(t *testing.T) {
+		// The read tool reaches organization storage; the write side
+		// deliberately does not, and the schema must say so rather than let a
+		// caller ask for something that cannot happen.
+		inputSchema, ok := tool.InputSchema.(*jsonschema.Schema)
+		require.True(t, ok, "the write tool must declare a JSON schema")
+		scope, ok := inputSchema.Properties["scope"]
+		require.True(t, ok, "the write tool must declare a scope")
+		assert.Equal(t, []any{"repository", "environment"}, scope.Enum)
+		assert.NotContains(t, scope.Description, "on the organization")
+		assert.NotContains(t, tool.Description, "or the organization")
+		assert.NotContains(t, inputSchema.Properties["repo"].Description, "organization")
+		// The description is where a caller is told where organization
+		// variables can be read, since the write side will not serve them.
+		assert.Contains(t, tool.Description, "Organization variables are read-only here")
+	})
+
+	t.Run("organization scope is refused for a write, without calling the API", func(t *testing.T) {
+		called := false
+		refuseCall := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			called = true
+			t.Error("no request may be made for a scope this tool does not support")
+			w.WriteHeader(http.StatusOK)
+		})
+		client := mustNewGHClient(t, NewMockedHTTPClient(
+			WithRequestMatchHandler(postOrgsActionsVariablesByOrg, refuseCall),
+			WithRequestMatchHandler(patchOrgsActionsVariablesByOrgByName, refuseCall),
+			WithRequestMatchHandler(delOrgsActionsVariablesByOrgByName, refuseCall),
+			WithRequestMatchHandler(postReposActionsVariablesByOwnerByRepo, refuseCall),
+			WithRequestMatchHandler(patchReposActionsVariablesByOwnerByRepoByName, refuseCall),
+			WithRequestMatchHandler(delReposActionsVariablesByOwnerByRepoByName, refuseCall),
+		))
 		deps := BaseDeps{Client: client}
 		handler := serverTool.Handler(deps)
 
-		request := createMCPRequest(map[string]any{
-			"method": "delete",
-			"owner":  "owner",
-			"repo":   "repo",
-			"scope":  "organization",
-			"name":   "ORG_WIDE",
-		})
-		result, err := handler(ContextWithDeps(context.Background(), deps), &request)
-		require.NoError(t, err)
-		assert.Contains(t, getErrorResult(t, result).Text, "not supported by this tool")
+		for _, method := range []string{"create_or_update", "delete"} {
+			request := createMCPRequest(map[string]any{
+				"method": method,
+				"owner":  "owner",
+				"repo":   "repo",
+				"scope":  "organization",
+				"name":   "ORG_WIDE",
+				"value":  "anything",
+			})
+			result, err := handler(ContextWithDeps(context.Background(), deps), &request)
+			require.NoError(t, err)
+			assert.Contains(t, getErrorResult(t, result).Text, "scope 'organization' is not supported by this tool")
+		}
+		assert.False(t, called)
 	})
 
 	t.Run("delete a variable", func(t *testing.T) {

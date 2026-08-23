@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -378,6 +379,14 @@ func EnvironmentWrite(t translations.TranslationHelperFunc) inventory.ServerTool
 				// empty request.
 				update := &github.CreateUpdateEnvironment{}
 				existing, resp, err := client.Repositories.GetEnvironment(ctx, owner, repo, name)
+				// A 404 means the environment does not exist yet and this call
+				// creates it, so there is nothing to preserve. Any other
+				// failure, including one that produced no response at all,
+				// leaves the current configuration unknown, and an update
+				// built on that would clear every setting not named here.
+				if err != nil && (resp == nil || resp.StatusCode != http.StatusNotFound) {
+					return ghErrors.NewGitHubAPIErrorResponse(ctx, fmt.Sprintf("failed to read environment '%s' before updating it, so it was left unchanged", name), resp, err), nil, nil
+				}
 				if err == nil {
 					_ = resp.Body.Close()
 					current := convertToMinimalEnvironment(existing)
@@ -397,8 +406,6 @@ func EnvironmentWrite(t translations.TranslationHelperFunc) inventory.ServerTool
 							CustomBranchPolicies: github.Ptr(current.CustomBranchPolicies),
 						}
 					}
-				} else if resp != nil && resp.StatusCode != 404 {
-					return ghErrors.NewGitHubAPIErrorResponse(ctx, fmt.Sprintf("failed to read environment '%s' before updating it", name), resp, err), nil, nil
 				}
 
 				if raw, ok := args["wait_timer_minutes"]; ok && raw != nil {
@@ -563,18 +570,63 @@ func resolveEnvironmentReviewers(ctx context.Context, client *github.Client, own
 	return reviewers, nil
 }
 
-func listDeploymentBranchPatterns(ctx context.Context, client *github.Client, owner, repo, environment string) ([]string, *mcp.CallToolResult) {
-	policies, resp, err := client.Repositories.ListDeploymentBranchPolicies(ctx, owner, repo, environment, &github.ListOptions{PerPage: 100})
-	if err != nil {
-		return nil, ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to list deployment branch policies", resp, err)
-	}
-	defer func() { _ = resp.Body.Close() }()
+// deploymentBranchPattern is one custom branch policy reduced to what callers
+// here need: the pattern itself, and the id that removes it.
+type deploymentBranchPattern struct {
+	name string
+	id   int64
+}
 
-	patterns := make([]string, 0, len(policies.BranchPolicies))
-	for _, policy := range policies.BranchPolicies {
-		if policy != nil {
-			patterns = append(patterns, policy.GetName())
+// listDeploymentBranchPolicies reads every custom branch policy on an
+// environment. The endpoint is paginated, so stopping at the first page would
+// leave later patterns invisible: reconciliation would recreate the ones it
+// could not see, and keep the ones it should have removed.
+func listDeploymentBranchPolicies(ctx context.Context, client *github.Client, owner, repo, environment string) ([]deploymentBranchPattern, *mcp.CallToolResult) {
+	opts := &github.ListOptions{PerPage: 100}
+	var all []deploymentBranchPattern
+	currentPage := 1
+
+	for {
+		policies, resp, err := client.Repositories.ListDeploymentBranchPolicies(ctx, owner, repo, environment, opts)
+		if err != nil {
+			return nil, ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to list deployment branch policies", resp, err)
 		}
+		for _, policy := range policies.BranchPolicies {
+			if policy != nil {
+				all = append(all, deploymentBranchPattern{name: policy.GetName(), id: policy.GetID()})
+			}
+		}
+
+		nextPage := 0
+		if resp != nil {
+			nextPage = resp.NextPage
+			if resp.Body != nil {
+				_ = resp.Body.Close()
+			}
+		}
+		// Truncating here would reintroduce exactly the bug this loop exists
+		// to fix, so the only stop is the end of the pages. A page number that
+		// does not advance would be the API contradicting itself; stop rather
+		// than spin.
+		if nextPage == 0 || nextPage <= currentPage {
+			break
+		}
+		currentPage = nextPage
+		opts.Page = nextPage
+	}
+
+	return all, nil
+}
+
+func listDeploymentBranchPatterns(ctx context.Context, client *github.Client, owner, repo, environment string) ([]string, *mcp.CallToolResult) {
+	policies, errResult := listDeploymentBranchPolicies(ctx, client, owner, repo, environment)
+	if errResult != nil {
+		return nil, errResult
+	}
+
+	patterns := make([]string, 0, len(policies))
+	for _, policy := range policies {
+		patterns = append(patterns, policy.name)
 	}
 	return patterns, nil
 }
@@ -584,23 +636,29 @@ func listDeploymentBranchPatterns(ctx context.Context, client *github.Client, ow
 // no longer wanted. The API has no bulk form, so this is a diff rather than a
 // wholesale replace.
 func replaceDeploymentBranchPatterns(ctx context.Context, client *github.Client, owner, repo, environment string, wanted []string) ([]string, *mcp.CallToolResult) {
-	policies, resp, err := client.Repositories.ListDeploymentBranchPolicies(ctx, owner, repo, environment, &github.ListOptions{PerPage: 100})
-	if err != nil {
-		return nil, ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to list deployment branch policies", resp, err)
+	// Reading every page first is what makes this a diff: a policy that was
+	// not read looks like one that does not exist, and would be created a
+	// second time or left behind when it should have been removed.
+	policies, errResult := listDeploymentBranchPolicies(ctx, client, owner, repo, environment)
+	if errResult != nil {
+		return nil, errResult
 	}
-	_ = resp.Body.Close()
 
-	existing := map[string]int64{}
-	for _, policy := range policies.BranchPolicies {
-		if policy != nil {
-			existing[policy.GetName()] = policy.GetID()
-		}
+	existing := map[string]bool{}
+	for _, policy := range policies {
+		existing[policy.name] = true
 	}
 
 	keep := map[string]bool{}
+	applied := make([]string, 0, len(wanted))
 	for _, pattern := range wanted {
+		if keep[pattern] {
+			// The same pattern named twice is one pattern.
+			continue
+		}
 		keep[pattern] = true
-		if _, ok := existing[pattern]; ok {
+		applied = append(applied, pattern)
+		if existing[pattern] {
 			continue
 		}
 		_, resp, err := client.Repositories.CreateDeploymentBranchPolicy(ctx, owner, repo, environment, github.CreateDeploymentBranchPolicyRequest{
@@ -612,16 +670,17 @@ func replaceDeploymentBranchPatterns(ctx context.Context, client *github.Client,
 		_ = resp.Body.Close()
 	}
 
-	for pattern, id := range existing {
-		if keep[pattern] {
+	// Iterating the read order rather than a map keeps removals deterministic.
+	for _, policy := range policies {
+		if keep[policy.name] {
 			continue
 		}
-		resp, err := client.Repositories.DeleteDeploymentBranchPolicy(ctx, owner, repo, environment, id)
+		resp, err := client.Repositories.DeleteDeploymentBranchPolicy(ctx, owner, repo, environment, policy.id)
 		if err != nil {
-			return nil, ghErrors.NewGitHubAPIErrorResponse(ctx, fmt.Sprintf("failed to remove branch pattern '%s'", pattern), resp, err)
+			return nil, ghErrors.NewGitHubAPIErrorResponse(ctx, fmt.Sprintf("failed to remove branch pattern '%s'", policy.name), resp, err)
 		}
 		_ = resp.Body.Close()
 	}
 
-	return wanted, nil
+	return applied, nil
 }
