@@ -1,0 +1,101 @@
+{
+  "annotations": {
+    "destructiveHint": true,
+    "idempotentHint": false,
+    "readOnlyHint": false,
+    "title": "Configure deployment environments"
+  },
+  "description": "Create, configure or delete a deployment environment. Creating and updating share one method: naming an environment that does not exist creates it. Only the settings you name are changed; every omitted setting keeps its current value.",
+  "inputSchema": {
+    "properties": {
+      "can_admins_bypass": {
+        "description": "Allow repository admins to bypass the protection rules.",
+        "type": "boolean"
+      },
+      "custom_branch_patterns": {
+        "description": "Branch name patterns allowed to deploy, e.g. ['main', 'release/*']. Replaces the current patterns. Requires deployment_branch_policy 'custom'.",
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "deployment_branch_policy": {
+        "description": "Which branches may deploy: 'all_branches', 'protected_branches', or 'custom' to restrict to the patterns in custom_branch_patterns.",
+        "enum": [
+          "all_branches",
+          "protected_branches",
+          "custom"
+        ],
+        "type": "string"
+      },
+      "environment_name": {
+        "description": "Environment name, e.g. 'staging'. Created if it does not exist.",
+        "type": "string"
+      },
+      "method": {
+        "description": "Operation to perform: 'create_or_update' or 'delete'",
+        "enum": [
+          "create_or_update",
+          "delete"
+        ],
+        "type": "string"
+      },
+      "owner": {
+        "description": "Repository owner (username or organization name)",
+        "type": "string"
+      },
+      "prevent_self_review": {
+        "description": "Prevent the user who triggered a deployment from approving it.",
+        "type": "boolean"
+      },
+      "repo": {
+        "description": "Repository name",
+        "type": "string"
+      },
+      "reviewers": {
+        "description": "Users and teams that must approve a deployment. Replaces the current list; an empty array removes the review requirement. Identify each reviewer by login, team slug, or numeric id.",
+        "items": {
+          "properties": {
+            "id": {
+              "description": "Numeric user or team id, if already known.",
+              "type": "number"
+            },
+            "login": {
+              "description": "GitHub login, when type is 'User'.",
+              "type": "string"
+            },
+            "slug": {
+              "description": "Team slug, when type is 'Team'.",
+              "type": "string"
+            },
+            "type": {
+              "description": "Whether the reviewer is a user or a team.",
+              "enum": [
+                "User",
+                "Team"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "wait_timer_minutes": {
+        "description": "Minutes to delay before a deployment to this environment can proceed. 0 removes the delay.",
+        "type": "number"
+      }
+    },
+    "required": [
+      "method",
+      "owner",
+      "repo",
+      "environment_name"
+    ],
+    "type": "object"
+  },
+  "name": "environment_write"
+}

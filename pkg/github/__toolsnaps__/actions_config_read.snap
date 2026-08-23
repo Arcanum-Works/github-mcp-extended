@@ -1,0 +1,34 @@
+{
+  "annotations": {
+    "idempotentHint": false,
+    "readOnlyHint": true,
+    "title": "Read Actions configuration"
+  },
+  "description": "Read a repository's GitHub Actions configuration: whether Actions is enabled, which actions workflows are allowed to use, and what the default GITHUB_TOKEN may do. Use 'actions_list' and 'actions_get' for workflows and runs; this reports the policy around them.",
+  "inputSchema": {
+    "properties": {
+      "method": {
+        "description": "The method to execute. Only 'get_permissions' is supported; it returns the whole configuration.",
+        "enum": [
+          "get_permissions"
+        ],
+        "type": "string"
+      },
+      "owner": {
+        "description": "Repository owner (username or organization name)",
+        "type": "string"
+      },
+      "repo": {
+        "description": "Repository name",
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "owner",
+      "repo"
+    ],
+    "type": "object"
+  },
+  "name": "actions_config_read"
+}
