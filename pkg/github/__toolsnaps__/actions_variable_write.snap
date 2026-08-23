@@ -5,7 +5,7 @@
     "readOnlyHint": false,
     "title": "Write Actions variables"
   },
-  "description": "Set or remove a GitHub Actions variable on a repository, one of its environments, or the organization. Creating and updating share one method: a variable that does not exist is created. Use 'actions_secret_write' for values that must stay secret.",
+  "description": "Set or remove a GitHub Actions variable on a repository or one of its environments. Organization variables are read-only here: 'actions_variables_read' reports them, but no tool writes them. Creating and updating share one method: a variable that does not exist is created. Use 'actions_secret_write' for values that must stay secret.",
   "inputSchema": {
     "properties": {
       "environment_name": {
@@ -29,11 +29,11 @@
         "type": "string"
       },
       "repo": {
-        "description": "Repository name. Not needed when scope is 'organization'.",
+        "description": "Repository name",
         "type": "string"
       },
       "scope": {
-        "description": "Where the value lives: on the repository, or on one of its environments. Defaults to 'repository'.",
+        "description": "Where the value lives: on the repository, or on one of its environments. Defaults to 'repository'. Organization scope is not available on this tool.",
         "enum": [
           "repository",
           "environment"
