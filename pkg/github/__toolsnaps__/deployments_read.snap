@@ -1,0 +1,67 @@
+{
+  "annotations": {
+    "idempotentHint": false,
+    "readOnlyHint": true,
+    "title": "Read deployments"
+  },
+  "description": "Read a repository's deployments and their statuses: what was deployed, to which environment, from which commit, and how it ended. Each deployment carries the SHA it came from, which is the link back to the commit and the workflow run that produced it.",
+  "inputSchema": {
+    "properties": {
+      "deployment_id": {
+        "description": "Numeric deployment ID. Required for 'get_deployment' and 'list_deployment_statuses'.",
+        "type": "number"
+      },
+      "environment": {
+        "description": "Only list deployments to this environment.",
+        "type": "string"
+      },
+      "method": {
+        "description": "The method to execute:\n- list_deployments: deployments, newest first, optionally filtered by environment, ref or SHA\n- get_deployment: one deployment by ID\n- list_deployment_statuses: the status history of one deployment, newest first",
+        "enum": [
+          "list_deployments",
+          "get_deployment",
+          "list_deployment_statuses"
+        ],
+        "type": "string"
+      },
+      "owner": {
+        "description": "Repository owner (username or organization name)",
+        "type": "string"
+      },
+      "page": {
+        "description": "Page number for pagination (min 1)",
+        "minimum": 1,
+        "type": "number"
+      },
+      "perPage": {
+        "description": "Results per page for pagination (min 1, max 100)",
+        "maximum": 100,
+        "minimum": 1,
+        "type": "number"
+      },
+      "ref": {
+        "description": "Only list deployments of this branch or tag.",
+        "type": "string"
+      },
+      "repo": {
+        "description": "Repository name",
+        "type": "string"
+      },
+      "sha": {
+        "description": "Only list deployments of this commit SHA. Use this to go from a commit to what it deployed.",
+        "type": "string"
+      },
+      "task": {
+        "description": "Only list deployments for this task, e.g. 'deploy'.",
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "owner",
+      "repo"
+    ],
+    "type": "object"
+  },
+  "name": "deployments_read"
+}

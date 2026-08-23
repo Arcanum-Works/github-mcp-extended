@@ -1,0 +1,57 @@
+{
+  "annotations": {
+    "destructiveHint": true,
+    "idempotentHint": false,
+    "readOnlyHint": false,
+    "title": "Write Actions variables"
+  },
+  "description": "Set or remove a GitHub Actions variable on a repository, one of its environments, or the organization. Creating and updating share one method: a variable that does not exist is created. Use 'actions_secret_write' for values that must stay secret.",
+  "inputSchema": {
+    "properties": {
+      "environment_name": {
+        "description": "Environment name. Required when scope is 'environment'.",
+        "type": "string"
+      },
+      "method": {
+        "description": "Operation to perform: 'create_or_update' or 'delete'",
+        "enum": [
+          "create_or_update",
+          "delete"
+        ],
+        "type": "string"
+      },
+      "name": {
+        "description": "Variable name.",
+        "type": "string"
+      },
+      "owner": {
+        "description": "Repository owner (username or organization name)",
+        "type": "string"
+      },
+      "repo": {
+        "description": "Repository name. Not needed when scope is 'organization'.",
+        "type": "string"
+      },
+      "scope": {
+        "description": "Where the value lives: on the repository, or on one of its environments. Defaults to 'repository'.",
+        "enum": [
+          "repository",
+          "environment"
+        ],
+        "type": "string"
+      },
+      "value": {
+        "description": "Variable value. Required for 'create_or_update'.",
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "owner",
+      "repo",
+      "name"
+    ],
+    "type": "object"
+  },
+  "name": "actions_variable_write"
+}
