@@ -1,0 +1,26 @@
+{
+  "annotations": {
+    "idempotentHint": false,
+    "readOnlyHint": true,
+    "title": "Read repository settings"
+  },
+  "description": "Read a repository's configuration: default branch, which merge methods are allowed, branch cleanup and auto-merge behaviour, and which features (issues, projects, wiki, discussions) are enabled.",
+  "inputSchema": {
+    "properties": {
+      "owner": {
+        "description": "Repository owner (username or organization name)",
+        "type": "string"
+      },
+      "repo": {
+        "description": "Repository name",
+        "type": "string"
+      }
+    },
+    "required": [
+      "owner",
+      "repo"
+    ],
+    "type": "object"
+  },
+  "name": "repository_settings_read"
+}

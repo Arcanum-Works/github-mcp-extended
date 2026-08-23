@@ -1,0 +1,240 @@
+{
+  "annotations": {
+    "destructiveHint": true,
+    "idempotentHint": false,
+    "readOnlyHint": false,
+    "title": "Write repository rulesets"
+  },
+  "description": "Create, update or delete a repository ruleset, or switch its enforcement on and off. Updates are additive: the current ruleset is read first and only the fields you name are changed, so an update cannot silently drop protections it did not mention. Rulesets are the modern replacement for branch protection; prefer them.",
+  "inputSchema": {
+    "properties": {
+      "bypass_actors": {
+        "description": "Actors allowed to bypass the ruleset. Replaces the current list when given; pass an empty array to remove every bypass.",
+        "items": {
+          "properties": {
+            "actor_id": {
+              "description": "ID of the team, app or role. Omit for OrganizationAdmin.",
+              "type": "number"
+            },
+            "actor_type": {
+              "description": "What kind of actor this is.",
+              "enum": [
+                "Integration",
+                "OrganizationAdmin",
+                "RepositoryRole",
+                "Team",
+                "DeployKey"
+              ],
+              "type": "string"
+            },
+            "bypass_mode": {
+              "description": "'always' bypasses everywhere, 'pull_request' only via a pull request.",
+              "enum": [
+                "always",
+                "pull_request"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "actor_type"
+          ],
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "enforcement": {
+        "description": "Whether the ruleset is enforced. 'evaluate' reports violations without blocking (available on some plans). Defaults to 'active' on create. Required for 'set_enforcement'.",
+        "enum": [
+          "active",
+          "evaluate",
+          "disabled"
+        ],
+        "type": "string"
+      },
+      "exclude_refs": {
+        "description": "Ref patterns exempted from the ruleset. Replaces the current exclude list when given.",
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "include_refs": {
+        "description": "Ref patterns the ruleset applies to, e.g. ['refs/heads/main', 'refs/heads/release/*'] or the special value '~DEFAULT_BRANCH' or '~ALL'. Replaces the current include list when given.",
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "method": {
+        "description": "Operation to perform: 'create', 'update', 'delete', or 'set_enforcement'",
+        "enum": [
+          "create",
+          "update",
+          "delete",
+          "set_enforcement"
+        ],
+        "type": "string"
+      },
+      "name": {
+        "description": "Ruleset name. Required for 'create'. For the other methods it identifies the ruleset when ruleset_id is not given; combined with ruleset_id on 'update' it renames the ruleset.",
+        "type": "string"
+      },
+      "owner": {
+        "description": "Repository owner (username or organization name)",
+        "type": "string"
+      },
+      "repo": {
+        "description": "Repository name",
+        "type": "string"
+      },
+      "rules": {
+        "description": "The rules to enforce. Only the keys you provide are changed; every other rule on the ruleset, including rules this tool does not model, is preserved.",
+        "properties": {
+          "allowed_merge_methods": {
+            "description": "Merge methods permitted for pull requests under this rule. Implies require_pull_request.",
+            "items": {
+              "enum": [
+                "merge",
+                "squash",
+                "rebase"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "block_creations": {
+            "description": "Block creation of matching refs.",
+            "type": "boolean"
+          },
+          "block_deletions": {
+            "description": "Block deletion of matching refs.",
+            "type": "boolean"
+          },
+          "block_force_pushes": {
+            "description": "Block force pushes to matching refs.",
+            "type": "boolean"
+          },
+          "dismiss_stale_reviews_on_push": {
+            "description": "Dismiss existing approvals when new commits are pushed. Implies require_pull_request.",
+            "type": "boolean"
+          },
+          "merge_queue": {
+            "description": "Merge queue configuration. Pass {\"enabled\": false} to remove it; any omitted setting falls back to GitHub's default rather than being left unset, because the API rejects a partial merge queue.",
+            "properties": {
+              "check_response_timeout_minutes": {
+                "description": "Minutes to wait for checks to report before the entry is dropped.",
+                "type": "number"
+              },
+              "enabled": {
+                "description": "Whether the merge queue is required. Defaults to true when the object is present.",
+                "type": "boolean"
+              },
+              "grouping_strategy": {
+                "description": "ALLGREEN requires every entry in the group to pass; HEADGREEN only the newest.",
+                "enum": [
+                  "ALLGREEN",
+                  "HEADGREEN"
+                ],
+                "type": "string"
+              },
+              "max_entries_to_build": {
+                "description": "Maximum entries built at once.",
+                "type": "number"
+              },
+              "max_entries_to_merge": {
+                "description": "Maximum entries merged at once.",
+                "type": "number"
+              },
+              "merge_method": {
+                "description": "How the queue merges entries.",
+                "enum": [
+                  "MERGE",
+                  "SQUASH",
+                  "REBASE"
+                ],
+                "type": "string"
+              },
+              "min_entries_to_merge": {
+                "description": "Minimum entries before a merge is attempted.",
+                "type": "number"
+              },
+              "min_entries_to_merge_wait_minutes": {
+                "description": "Minutes to wait for min_entries_to_merge before merging anyway.",
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "require_code_owner_review": {
+            "description": "Require review from a CODEOWNERS owner. Implies require_pull_request.",
+            "type": "boolean"
+          },
+          "require_last_push_approval": {
+            "description": "Require the most recent push to be approved by someone other than its author. Implies require_pull_request.",
+            "type": "boolean"
+          },
+          "require_linear_history": {
+            "description": "Require a linear history, blocking merge commits.",
+            "type": "boolean"
+          },
+          "require_pull_request": {
+            "description": "Require changes to go through a pull request. Setting false removes the pull request rule and every review requirement with it.",
+            "type": "boolean"
+          },
+          "require_signed_commits": {
+            "description": "Require commits to be signed.",
+            "type": "boolean"
+          },
+          "required_approving_review_count": {
+            "description": "Approving reviews needed before merge. Implies require_pull_request.",
+            "type": "number"
+          },
+          "required_deployment_environments": {
+            "description": "Environments that must have a successful deployment before merge. An empty array removes the rule.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "required_review_thread_resolution": {
+            "description": "Require all review conversations to be resolved before merge. Implies require_pull_request.",
+            "type": "boolean"
+          },
+          "required_status_checks": {
+            "description": "Status check contexts that must pass. An empty array removes the required-checks rule entirely.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "strict_required_status_checks_policy": {
+            "description": "Require the branch to be up to date with its base before merging.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "ruleset_id": {
+        "description": "Numeric ruleset ID. Identifies the ruleset for 'update', 'delete' and 'set_enforcement'; takes precedence over name.",
+        "type": "number"
+      },
+      "target": {
+        "description": "What the ruleset applies to. Defaults to 'branch' on create.",
+        "enum": [
+          "branch",
+          "tag",
+          "push"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "owner",
+      "repo"
+    ],
+    "type": "object"
+  },
+  "name": "ruleset_write"
+}
