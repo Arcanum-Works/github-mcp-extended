@@ -10,6 +10,7 @@ import (
 
 	ghErrors "github.com/github/github-mcp-server/pkg/errors"
 	"github.com/github/github-mcp-server/pkg/inventory"
+	mcplog "github.com/github/github-mcp-server/pkg/log"
 	"github.com/github/github-mcp-server/pkg/scopes"
 	"github.com/github/github-mcp-server/pkg/translations"
 	"github.com/github/github-mcp-server/pkg/utils"
@@ -18,6 +19,14 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"golang.org/x/crypto/nacl/box"
 )
+
+// The value parameter of actions_secret_write is the one place in this server
+// where a caller hands over a plaintext credential. Declaring it here keeps the
+// command logger from ever writing it to disk, and keeps that knowledge next to
+// the tool that owns it.
+func init() {
+	mcplog.RegisterSensitiveToolParams("actions_secret_write", "value")
+}
 
 const (
 	secretsMethodList    = "list"
@@ -214,7 +223,7 @@ func ActionsSecretWrite(t translations.TranslationHelperFunc) inventory.ServerTo
 					},
 					"value": {
 						Type:        "string",
-						Description: "The secret value. Required for 'create_or_update'. It is encrypted before transmission and never returned by any tool.",
+						Description: "The secret value. Required for 'create_or_update'. It is encrypted to the repository's or environment's public key before it leaves this server, is never returned by any tool, and is redacted from this server's logs.",
 					},
 				},
 				Required: []string{"method", "owner", "repo", "name"},
