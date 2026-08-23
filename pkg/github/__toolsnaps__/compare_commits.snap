@@ -1,0 +1,56 @@
+{
+  "annotations": {
+    "idempotentHint": false,
+    "readOnlyHint": true,
+    "title": "Compare two refs"
+  },
+  "description": "Compare two commits, branches or tags in a GitHub repository, returning how far apart they are and what changed between them. Use this to diff arbitrary refs; for the diff of an open pull request use 'pull_request_read' instead.",
+  "inputSchema": {
+    "properties": {
+      "base": {
+        "description": "The ref to compare from: a commit SHA, branch name or tag name. To compare across forks, use 'owner:branch'.",
+        "type": "string"
+      },
+      "detail": {
+        "description": "How much per-file detail to include: 'none' omits the file list, 'stats' (default) lists changed files with counts, 'full_patch' includes the diff for each file.",
+        "enum": [
+          "none",
+          "stats",
+          "full_patch"
+        ],
+        "type": "string"
+      },
+      "head": {
+        "description": "The ref to compare to: a commit SHA, branch name or tag name. To compare across forks, use 'owner:branch'.",
+        "type": "string"
+      },
+      "owner": {
+        "description": "Repository owner (username or organization name)",
+        "type": "string"
+      },
+      "page": {
+        "description": "Page number for pagination (min 1)",
+        "minimum": 1,
+        "type": "number"
+      },
+      "perPage": {
+        "description": "Results per page for pagination (min 1, max 100)",
+        "maximum": 100,
+        "minimum": 1,
+        "type": "number"
+      },
+      "repo": {
+        "description": "Repository name",
+        "type": "string"
+      }
+    },
+    "required": [
+      "owner",
+      "repo",
+      "base",
+      "head"
+    ],
+    "type": "object"
+  },
+  "name": "compare_commits"
+}

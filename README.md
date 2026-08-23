@@ -662,6 +662,35 @@ The following sets of tools are available:
   - `run_id`: The ID of the workflow run. Required for all methods except 'run_workflow'. (number, optional)
   - `workflow_id`: The workflow ID (numeric) or workflow file name (e.g., main.yml, ci.yaml). Required for 'run_workflow' method. (string, optional)
 
+- **checks_read** - Read check runs and commit statuses
+  - **Required OAuth Scopes**: `repo`
+  - `app_id`: Only return check runs or suites produced by this GitHub App ID. (number, optional)
+  - `check_name`: Only return check runs or suites with this name. Used by 'list_check_runs' and 'list_check_suites'. (string, optional)
+  - `check_run_id`: Numeric check run ID. Required for 'get_check_run'. (number, optional)
+  - `filter`: Whether to return the latest check run per name or every run, including reruns. Defaults to 'latest'. Used by 'list_check_runs'. (string, optional)
+  - `method`: The method to execute:
+    - list_check_runs: check runs for a ref (Checks API)
+    - get_check_run: a single check run by ID
+    - list_check_suites: check suites for a ref
+    - get_combined_status: the rolled-up commit status for a ref (Statuses API)
+    - list_statuses: individual commit statuses for a ref, most recent first (string, required)
+  - `owner`: Repository owner (username or organization name) (string, required)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
+  - `ref`: Commit SHA, branch name or tag name. Required for all methods except 'get_check_run'. (string, optional)
+  - `repo`: Repository name (string, required)
+  - `status`: Only return check runs in this status. Used by 'list_check_runs'. (string, optional)
+
+- **commit_status_write** - Post a commit status
+  - **Required OAuth Scopes**: `repo`
+  - `context`: Label that distinguishes this status from other systems' statuses (e.g. 'ci/lint'). Defaults to 'default'. (string, optional)
+  - `description`: Short human-readable summary of the status. (string, optional)
+  - `owner`: Repository owner (username or organization name) (string, required)
+  - `ref`: Commit SHA, branch name or tag name to attach the status to. (string, required)
+  - `repo`: Repository name (string, required)
+  - `state`: The status state. (string, required)
+  - `target_url`: URL the status links to from the GitHub UI, e.g. the build output. (string, optional)
+
 - **get_job_logs** - Get GitHub Actions workflow job logs
   - **Required OAuth Scopes**: `repo`
   - `failed_only`: When true, gets logs for all failed jobs in the workflow run specified by run_id. Requires run_id to be provided. (boolean, optional)
@@ -885,6 +914,15 @@ The following sets of tools are available:
   - `repo`: Repository name (string, required)
   - `tree_sha`: The SHA1 value or ref (branch or tag) name of the tree. Defaults to the repository's default branch (string, optional)
 
+- **git_ref_write** - Write operations on git references
+  - **Required OAuth Scopes**: `repo`
+  - `force`: Allow a non-fast-forward update, discarding commits that only the old ref pointed at. Used by 'update'. (boolean, optional)
+  - `method`: Operation to perform: 'create', 'update' (move an existing ref to a different commit), or 'delete' (string, required)
+  - `owner`: Repository owner (username or organization name) (string, required)
+  - `ref`: Fully qualified ref name, e.g. 'refs/heads/my-branch' or 'refs/tags/v1.2.3'. (string, required)
+  - `repo`: Repository name (string, required)
+  - `sha`: Commit SHA the ref points at. Required for 'create' and 'update'. (string, optional)
+
 </details>
 
 <details>
@@ -968,6 +1006,27 @@ The following sets of tools are available:
   - `repo`: Repository name (string, required)
   - `since`: Filter by date (ISO 8601 timestamp) (string, optional)
   - `state`: Filter by state, by default both open and closed issues are returned when not provided (string, optional)
+
+- **list_milestones** - List milestones
+  - **Required OAuth Scopes**: `repo`
+  - `direction`: Sort direction. Defaults to 'asc'. (string, optional)
+  - `owner`: Repository owner (username or organization name) (string, required)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
+  - `repo`: Repository name (string, required)
+  - `sort`: Sort field. Defaults to 'due_on'. (string, optional)
+  - `state`: Filter by milestone state. Defaults to 'open'. (string, optional)
+
+- **milestone_write** - Write operations on milestones
+  - **Required OAuth Scopes**: `repo`
+  - `description`: Milestone description. (string, optional)
+  - `due_on`: Due date as YYYY-MM-DD. Interpreted as the end of that day in UTC. (string, optional)
+  - `method`: Operation to perform: 'create', 'update', or 'delete' (string, required)
+  - `milestone_number`: Milestone number. Identifies the milestone for 'update' and 'delete'; takes precedence over title. (number, optional)
+  - `owner`: Repository owner (username or organization name) (string, required)
+  - `repo`: Repository name (string, required)
+  - `state`: Milestone state. (string, optional)
+  - `title`: Milestone title. Required for 'create'. For 'update' and 'delete' it identifies the milestone when milestone_number is not given; for 'update' it also renames the milestone when milestone_number is given. (string, optional)
 
 - **search_issues** - Search issues
   - **Required OAuth Scopes**: `repo`
@@ -1275,6 +1334,16 @@ The following sets of tools are available:
 
 <summary><picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/repo-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/repo-light.png"><img src="pkg/octicons/icons/repo-light.png" width="20" height="20" alt="repo"></picture> Repositories</summary>
 
+- **compare_commits** - Compare two refs
+  - **Required OAuth Scopes**: `repo`
+  - `base`: The ref to compare from: a commit SHA, branch name or tag name. To compare across forks, use 'owner:branch'. (string, required)
+  - `detail`: How much per-file detail to include: 'none' omits the file list, 'stats' (default) lists changed files with counts, 'full_patch' includes the diff for each file. (string, optional)
+  - `head`: The ref to compare to: a commit SHA, branch name or tag name. To compare across forks, use 'owner:branch'. (string, required)
+  - `owner`: Repository owner (username or organization name) (string, required)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
+  - `repo`: Repository name (string, required)
+
 - **create_branch** - Create branch
   - **Required OAuth Scopes**: `repo`
   - `branch`: Name for new branch (string, required)
@@ -1406,6 +1475,24 @@ The following sets of tools are available:
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
 
+- **release_write** - Write operations on releases
+  - **Required OAuth Scopes**: `repo`
+  - `body`: Release notes in markdown. (string, optional)
+  - `configuration_file_path`: Path to a release notes configuration file for 'generate_notes' (defaults to .github/release.yml). (string, optional)
+  - `discussion_category_name`: Create a discussion of this category for the release. The category must already exist in the repository. (string, optional)
+  - `draft`: Whether the release is a draft (unpublished). (boolean, optional)
+  - `generate_release_notes`: Auto-generate release notes on 'create'. When body is also given, the generated notes are appended to it. (boolean, optional)
+  - `make_latest`: Whether to mark this release as the repository's latest. 'legacy' defers to GitHub's date-and-semver heuristic. (string, optional)
+  - `method`: Operation to perform: 'create', 'update', 'delete', or 'generate_notes' (string, required)
+  - `name`: Release title. (string, optional)
+  - `owner`: Repository owner (username or organization name) (string, required)
+  - `prerelease`: Whether the release is a prerelease. (boolean, optional)
+  - `previous_tag_name`: Tag to generate notes against for 'generate_notes'. Defaults to the previous release's tag. (string, optional)
+  - `release_id`: Numeric release ID. Identifies the release for 'update' and 'delete'; takes precedence over tag_name. (number, optional)
+  - `repo`: Repository name (string, required)
+  - `tag_name`: Tag the release points at. Required for 'create' and 'generate_notes'. For 'update' and 'delete' it identifies the release when release_id is not given; for 'update' it also retags the release when release_id is given. (string, optional)
+  - `target_commitish`: Branch or commit SHA the tag is created from when it does not exist yet. Defaults to the repository's default branch. (string, optional)
+
 - **search_code** - Search code
   - **Required OAuth Scopes**: `repo`
   - `fields`: Subset of fields to return for each code search result. If omitted, all fields are returned. Use this to reduce response size when you only need specific fields; omitting 'repository' and 'text_matches' in particular drops the largest per-result data. (string[], optional)
@@ -1431,6 +1518,15 @@ The following sets of tools are available:
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `query`: Repository search query. Examples: 'machine learning in:name stars:>1000 language:python', 'topic:react', 'user:facebook'. Supports advanced search syntax for precise filtering. (string, required)
   - `sort`: Sort repositories by field, defaults to best match (string, optional)
+
+- **tag_write** - Write operations on tags
+  - **Required OAuth Scopes**: `repo`
+  - `from_ref`: Commit SHA, branch name or tag name the new tag points at. Defaults to the head of the repository's default branch. Used by 'create'. (string, optional)
+  - `message`: Annotation message. Supplying it creates an annotated tag object instead of a lightweight tag. Used by 'create'. (string, optional)
+  - `method`: Operation to perform: 'create' or 'delete' (string, required)
+  - `owner`: Repository owner (username or organization name) (string, required)
+  - `repo`: Repository name (string, required)
+  - `tag`: Tag name, without the 'refs/tags/' prefix (e.g. 'v1.2.3'). (string, required)
 
 </details>
 

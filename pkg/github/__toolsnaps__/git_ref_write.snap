@@ -1,0 +1,50 @@
+{
+  "annotations": {
+    "destructiveHint": true,
+    "idempotentHint": false,
+    "readOnlyHint": false,
+    "title": "Write operations on git references"
+  },
+  "description": "Create, move or delete a git reference (branch, tag or any other ref) by its full ref name. For the common cases prefer 'create_branch' and 'tag_write', which resolve the target commit for you.",
+  "inputSchema": {
+    "properties": {
+      "force": {
+        "description": "Allow a non-fast-forward update, discarding commits that only the old ref pointed at. Used by 'update'.",
+        "type": "boolean"
+      },
+      "method": {
+        "description": "Operation to perform: 'create', 'update' (move an existing ref to a different commit), or 'delete'",
+        "enum": [
+          "create",
+          "update",
+          "delete"
+        ],
+        "type": "string"
+      },
+      "owner": {
+        "description": "Repository owner (username or organization name)",
+        "type": "string"
+      },
+      "ref": {
+        "description": "Fully qualified ref name, e.g. 'refs/heads/my-branch' or 'refs/tags/v1.2.3'.",
+        "type": "string"
+      },
+      "repo": {
+        "description": "Repository name",
+        "type": "string"
+      },
+      "sha": {
+        "description": "Commit SHA the ref points at. Required for 'create' and 'update'.",
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "owner",
+      "repo",
+      "ref"
+    ],
+    "type": "object"
+  },
+  "name": "git_ref_write"
+}

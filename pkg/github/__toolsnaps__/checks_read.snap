@@ -1,0 +1,82 @@
+{
+  "annotations": {
+    "idempotentHint": false,
+    "readOnlyHint": true,
+    "title": "Read check runs and commit statuses"
+  },
+  "description": "Read CI results for a commit, branch or tag: check runs and check suites from the Checks API, and commit statuses from the Statuses API. Both gate a merge, so a fully green ref needs both to pass.",
+  "inputSchema": {
+    "properties": {
+      "app_id": {
+        "description": "Only return check runs or suites produced by this GitHub App ID.",
+        "type": "number"
+      },
+      "check_name": {
+        "description": "Only return check runs or suites with this name. Used by 'list_check_runs' and 'list_check_suites'.",
+        "type": "string"
+      },
+      "check_run_id": {
+        "description": "Numeric check run ID. Required for 'get_check_run'.",
+        "type": "number"
+      },
+      "filter": {
+        "description": "Whether to return the latest check run per name or every run, including reruns. Defaults to 'latest'. Used by 'list_check_runs'.",
+        "enum": [
+          "latest",
+          "all"
+        ],
+        "type": "string"
+      },
+      "method": {
+        "description": "The method to execute:\n- list_check_runs: check runs for a ref (Checks API)\n- get_check_run: a single check run by ID\n- list_check_suites: check suites for a ref\n- get_combined_status: the rolled-up commit status for a ref (Statuses API)\n- list_statuses: individual commit statuses for a ref, most recent first",
+        "enum": [
+          "list_check_runs",
+          "get_check_run",
+          "list_check_suites",
+          "get_combined_status",
+          "list_statuses"
+        ],
+        "type": "string"
+      },
+      "owner": {
+        "description": "Repository owner (username or organization name)",
+        "type": "string"
+      },
+      "page": {
+        "description": "Page number for pagination (min 1)",
+        "minimum": 1,
+        "type": "number"
+      },
+      "perPage": {
+        "description": "Results per page for pagination (min 1, max 100)",
+        "maximum": 100,
+        "minimum": 1,
+        "type": "number"
+      },
+      "ref": {
+        "description": "Commit SHA, branch name or tag name. Required for all methods except 'get_check_run'.",
+        "type": "string"
+      },
+      "repo": {
+        "description": "Repository name",
+        "type": "string"
+      },
+      "status": {
+        "description": "Only return check runs in this status. Used by 'list_check_runs'.",
+        "enum": [
+          "queued",
+          "in_progress",
+          "completed"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "owner",
+      "repo"
+    ],
+    "type": "object"
+  },
+  "name": "checks_read"
+}

@@ -1,0 +1,91 @@
+{
+  "annotations": {
+    "destructiveHint": true,
+    "idempotentHint": false,
+    "readOnlyHint": false,
+    "title": "Write operations on releases"
+  },
+  "description": "Create, update or delete a release in a GitHub repository, or generate release notes for a tag without publishing. Creating a release also creates its tag if it does not already exist.",
+  "inputSchema": {
+    "properties": {
+      "body": {
+        "description": "Release notes in markdown.",
+        "type": "string"
+      },
+      "configuration_file_path": {
+        "description": "Path to a release notes configuration file for 'generate_notes' (defaults to .github/release.yml).",
+        "type": "string"
+      },
+      "discussion_category_name": {
+        "description": "Create a discussion of this category for the release. The category must already exist in the repository.",
+        "type": "string"
+      },
+      "draft": {
+        "description": "Whether the release is a draft (unpublished).",
+        "type": "boolean"
+      },
+      "generate_release_notes": {
+        "description": "Auto-generate release notes on 'create'. When body is also given, the generated notes are appended to it.",
+        "type": "boolean"
+      },
+      "make_latest": {
+        "description": "Whether to mark this release as the repository's latest. 'legacy' defers to GitHub's date-and-semver heuristic.",
+        "enum": [
+          "true",
+          "false",
+          "legacy"
+        ],
+        "type": "string"
+      },
+      "method": {
+        "description": "Operation to perform: 'create', 'update', 'delete', or 'generate_notes'",
+        "enum": [
+          "create",
+          "update",
+          "delete",
+          "generate_notes"
+        ],
+        "type": "string"
+      },
+      "name": {
+        "description": "Release title.",
+        "type": "string"
+      },
+      "owner": {
+        "description": "Repository owner (username or organization name)",
+        "type": "string"
+      },
+      "prerelease": {
+        "description": "Whether the release is a prerelease.",
+        "type": "boolean"
+      },
+      "previous_tag_name": {
+        "description": "Tag to generate notes against for 'generate_notes'. Defaults to the previous release's tag.",
+        "type": "string"
+      },
+      "release_id": {
+        "description": "Numeric release ID. Identifies the release for 'update' and 'delete'; takes precedence over tag_name.",
+        "type": "number"
+      },
+      "repo": {
+        "description": "Repository name",
+        "type": "string"
+      },
+      "tag_name": {
+        "description": "Tag the release points at. Required for 'create' and 'generate_notes'. For 'update' and 'delete' it identifies the release when release_id is not given; for 'update' it also retags the release when release_id is given.",
+        "type": "string"
+      },
+      "target_commitish": {
+        "description": "Branch or commit SHA the tag is created from when it does not exist yet. Defaults to the repository's default branch.",
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "owner",
+      "repo"
+    ],
+    "type": "object"
+  },
+  "name": "release_write"
+}

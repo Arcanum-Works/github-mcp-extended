@@ -1,0 +1,49 @@
+{
+  "annotations": {
+    "destructiveHint": true,
+    "idempotentHint": false,
+    "readOnlyHint": false,
+    "title": "Write operations on tags"
+  },
+  "description": "Create or delete a tag in a GitHub repository. Supplying a message creates an annotated tag; without one the tag is lightweight. Creating a tag does not create a release - use 'release_write' for that.",
+  "inputSchema": {
+    "properties": {
+      "from_ref": {
+        "description": "Commit SHA, branch name or tag name the new tag points at. Defaults to the head of the repository's default branch. Used by 'create'.",
+        "type": "string"
+      },
+      "message": {
+        "description": "Annotation message. Supplying it creates an annotated tag object instead of a lightweight tag. Used by 'create'.",
+        "type": "string"
+      },
+      "method": {
+        "description": "Operation to perform: 'create' or 'delete'",
+        "enum": [
+          "create",
+          "delete"
+        ],
+        "type": "string"
+      },
+      "owner": {
+        "description": "Repository owner (username or organization name)",
+        "type": "string"
+      },
+      "repo": {
+        "description": "Repository name",
+        "type": "string"
+      },
+      "tag": {
+        "description": "Tag name, without the 'refs/tags/' prefix (e.g. 'v1.2.3').",
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "owner",
+      "repo",
+      "tag"
+    ],
+    "type": "object"
+  },
+  "name": "tag_write"
+}
