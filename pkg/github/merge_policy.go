@@ -30,6 +30,13 @@ type MinimalRulesetSource struct {
 // GitHub applies the union of all matching rulesets, and the strictest value
 // wins where they disagree, so this collapses them the same way: booleans are
 // OR-ed, review counts take the maximum, and status check contexts are unioned.
+//
+// Merge methods are the exception to the unioning, because they are a
+// permission rather than a requirement: each ruleset that restricts them
+// removes options, so the methods left are the intersection of every
+// restriction in force. MergeMethodsRestricted says whether any ruleset
+// restricted them at all, which is what separates "the rulesets contradict
+// each other and allow nothing" from "no ruleset has an opinion".
 type MinimalBranchRules struct {
 	Branch                         string                 `json:"branch"`
 	RequirePullRequest             bool                   `json:"require_pull_request"`
@@ -39,6 +46,7 @@ type MinimalBranchRules struct {
 	RequireLastPushApproval        bool                   `json:"require_last_push_approval"`
 	RequiredReviewThreadResolution bool                   `json:"required_review_thread_resolution"`
 	AllowedMergeMethods            []string               `json:"allowed_merge_methods,omitempty"`
+	MergeMethodsRestricted         bool                   `json:"merge_methods_restricted,omitempty"`
 	RequiredStatusChecks           []string               `json:"required_status_checks,omitempty"`
 	StrictRequiredStatusChecks     bool                   `json:"strict_required_status_checks_policy"`
 	BlockForcePushes               bool                   `json:"block_force_pushes"`
@@ -82,6 +90,14 @@ func convertToMinimalBranchRules(branch string, rules *github.BranchRules) Minim
 		}
 	}
 
+	// Merge methods narrow rather than accumulate: a pull request has to
+	// satisfy every ruleset at once, so only a method that all of them allow
+	// can actually be used. Track the running intersection separately from the
+	// "nobody has restricted this yet" case, which is not the same as "nothing
+	// is allowed".
+	mergeMethodsRestricted := false
+	var allowedMergeMethods []string
+
 	for _, rule := range rules.PullRequest {
 		if rule == nil {
 			continue
@@ -93,11 +109,27 @@ func convertToMinimalBranchRules(branch string, rules *github.BranchRules) Minim
 		m.RequireCodeOwnerReview = m.RequireCodeOwnerReview || rule.Parameters.RequireCodeOwnerReview
 		m.RequireLastPushApproval = m.RequireLastPushApproval || rule.Parameters.RequireLastPushApproval
 		m.RequiredReviewThreadResolution = m.RequiredReviewThreadResolution || rule.Parameters.RequiredReviewThreadResolution
-		for _, method := range rule.Parameters.AllowedMergeMethods {
-			if !slices.Contains(m.AllowedMergeMethods, string(method)) {
-				m.AllowedMergeMethods = append(m.AllowedMergeMethods, string(method))
-			}
+
+		// A rule that names no merge methods places no restriction on them,
+		// and must not drag the intersection down to nothing.
+		methods := mergeMethodNames(rule.Parameters.AllowedMergeMethods)
+		if len(methods) == 0 {
+			continue
 		}
+		if !mergeMethodsRestricted {
+			mergeMethodsRestricted = true
+			allowedMergeMethods = methods
+			continue
+		}
+		allowedMergeMethods = intersectStrings(allowedMergeMethods, methods)
+	}
+
+	// An empty list here means the rulesets contradict each other and leave no
+	// usable method; the flag is what separates that from the unrestricted
+	// case, where the list is absent instead.
+	m.MergeMethodsRestricted = mergeMethodsRestricted
+	if mergeMethodsRestricted {
+		m.AllowedMergeMethods = allowedMergeMethods
 	}
 
 	for _, rule := range rules.RequiredStatusChecks {
@@ -154,6 +186,31 @@ func convertToMinimalBranchRules(branch string, rules *github.BranchRules) Minim
 	sort.Slice(m.Sources, func(i, j int) bool { return m.Sources[i].RulesetID < m.Sources[j].RulesetID })
 
 	return m
+}
+
+// mergeMethodNames flattens a rule's merge methods to plain strings, dropping
+// any repeats so the intersection below compares clean sets.
+func mergeMethodNames(methods []github.PullRequestMergeMethod) []string {
+	names := make([]string, 0, len(methods))
+	for _, method := range methods {
+		if !slices.Contains(names, string(method)) {
+			names = append(names, string(method))
+		}
+	}
+	return names
+}
+
+// intersectStrings returns the values present in both slices, in the order of
+// the first. The result is never nil, so an empty intersection stays
+// distinguishable from an absent one.
+func intersectStrings(a, b []string) []string {
+	out := make([]string, 0, len(a))
+	for _, value := range a {
+		if slices.Contains(b, value) {
+			out = append(out, value)
+		}
+	}
+	return out
 }
 
 // MergePolicyRead creates a tool that answers whether and how a pull request
@@ -254,17 +311,15 @@ func MergePolicyRead(t translations.TranslationHelperFunc) inventory.ServerTool 
 				policy.RepositoryAllowedMergeMethods = []string{}
 			}
 
-			// A ruleset can only narrow what the repository already allows, so
-			// the methods actually available are the intersection.
-			if len(branchRules.AllowedMergeMethods) == 0 {
-				policy.EffectiveAllowedMergeMethods = policy.RepositoryAllowedMergeMethods
+			// The repository settings and the rulesets are two separate layers
+			// of restriction: a ruleset can only narrow what the repository
+			// already allows, so the methods actually available are the
+			// intersection of the two. Rulesets that restrict nothing leave the
+			// repository's own configuration as the answer.
+			if branchRules.MergeMethodsRestricted {
+				policy.EffectiveAllowedMergeMethods = intersectStrings(policy.RepositoryAllowedMergeMethods, branchRules.AllowedMergeMethods)
 			} else {
-				policy.EffectiveAllowedMergeMethods = []string{}
-				for _, method := range policy.RepositoryAllowedMergeMethods {
-					if slices.Contains(branchRules.AllowedMergeMethods, method) {
-						policy.EffectiveAllowedMergeMethods = append(policy.EffectiveAllowedMergeMethods, method)
-					}
-				}
+				policy.EffectiveAllowedMergeMethods = policy.RepositoryAllowedMergeMethods
 			}
 
 			if len(policy.EffectiveAllowedMergeMethods) == 0 {
