@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -220,7 +221,7 @@ func MilestoneWrite(t translations.TranslationHelperFunc) inventory.ServerTool {
 					},
 					"description": {
 						Type:        "string",
-						Description: "Milestone description.",
+						Description: "Milestone description. On 'update', pass an empty string to clear it; omit it to leave the current description unchanged.",
 					},
 					"state": {
 						Type:        "string",
@@ -229,7 +230,7 @@ func MilestoneWrite(t translations.TranslationHelperFunc) inventory.ServerTool {
 					},
 					"due_on": {
 						Type:        "string",
-						Description: "Due date as YYYY-MM-DD. Interpreted as the end of that day in UTC.",
+						Description: "Due date as YYYY-MM-DD. Interpreted as the end of that day in UTC. On 'update', pass an empty string to clear the due date; omit it to leave the current one unchanged.",
 					},
 				},
 				Required: []string{"method", "owner", "repo"},
@@ -259,7 +260,12 @@ func MilestoneWrite(t translations.TranslationHelperFunc) inventory.ServerTool {
 			if err != nil {
 				return utils.NewToolResultError(err.Error()), nil, nil
 			}
-			description, err := OptionalParam[string](args, "description")
+			// description and due_on are the milestone fields an update can
+			// clear, so they are read with a presence flag: OptionalParam
+			// collapses "omitted" and "explicitly empty" into the same empty
+			// string, which would turn `"description": ""` into a no-op instead
+			// of a clear.
+			description, descriptionSet, err := OptionalParamOK[string](args, "description")
 			if err != nil {
 				return utils.NewToolResultError(err.Error()), nil, nil
 			}
@@ -267,7 +273,7 @@ func MilestoneWrite(t translations.TranslationHelperFunc) inventory.ServerTool {
 			if err != nil {
 				return utils.NewToolResultError(err.Error()), nil, nil
 			}
-			dueOn, err := OptionalParam[string](args, "due_on")
+			dueOn, dueOnSet, err := OptionalParamOK[string](args, "due_on")
 			if err != nil {
 				return utils.NewToolResultError(err.Error()), nil, nil
 			}
@@ -314,18 +320,44 @@ func MilestoneWrite(t translations.TranslationHelperFunc) inventory.ServerTool {
 					return errResult, nil, err
 				}
 
-				request := &github.Milestone{
-					Description: ToStringPtr(description),
-					State:       ToStringPtr(state),
-					DueOn:       dueOnTimestamp,
-				}
+				// The payload is a raw map rather than a *github.Milestone
+				// because every field on that struct is tagged omitempty: a nil
+				// DueOn is dropped, so the struct cannot express the explicit
+				// null that clears a due date.
+				payload := map[string]any{}
 				// As with releases, a title that served as the lookup key is
-				// not also a rename.
-				if number != 0 {
-					request.Title = ToStringPtr(title)
+				// not also a rename. A title cannot be cleared either — the API
+				// requires a non-empty one — so an empty title is dropped.
+				if number != 0 && title != "" {
+					payload["title"] = title
+				}
+				// state is an enum with no empty member, so it is only sent
+				// when the caller named a state.
+				if state != "" {
+					payload["state"] = state
+				}
+				// An explicitly empty description or due_on is a clear and has
+				// to reach the API, as "" and null respectively; an omitted one
+				// stays out of the payload so the stored value survives.
+				if descriptionSet {
+					payload["description"] = description
+				}
+				if dueOnSet {
+					if dueOnTimestamp != nil {
+						payload["due_on"] = dueOnTimestamp
+					} else {
+						payload["due_on"] = nil
+					}
 				}
 
-				milestone, resp, err := client.Issues.EditMilestone(ctx, owner, repo, resolved, request)
+				apiURL := fmt.Sprintf("repos/%s/%s/milestones/%d", owner, repo, resolved)
+				req, err := client.NewRequest(ctx, http.MethodPatch, apiURL, payload)
+				if err != nil {
+					return utils.NewToolResultErrorFromErr("failed to create request", err), nil, nil
+				}
+
+				milestone := &github.Milestone{}
+				resp, err := client.Do(req, milestone)
 				if err != nil {
 					return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to update milestone", resp, err), nil, nil
 				}

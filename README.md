@@ -1019,8 +1019,8 @@ The following sets of tools are available:
 
 - **milestone_write** - Write operations on milestones
   - **Required OAuth Scopes**: `repo`
-  - `description`: Milestone description. (string, optional)
-  - `due_on`: Due date as YYYY-MM-DD. Interpreted as the end of that day in UTC. (string, optional)
+  - `description`: Milestone description. On 'update', pass an empty string to clear it; omit it to leave the current description unchanged. (string, optional)
+  - `due_on`: Due date as YYYY-MM-DD. Interpreted as the end of that day in UTC. On 'update', pass an empty string to clear the due date; omit it to leave the current one unchanged. (string, optional)
   - `method`: Operation to perform: 'create', 'update', or 'delete' (string, required)
   - `milestone_number`: Milestone number. Identifies the milestone for 'update' and 'delete'; takes precedence over title. (number, optional)
   - `owner`: Repository owner (username or organization name) (string, required)
@@ -1477,14 +1477,14 @@ The following sets of tools are available:
 
 - **release_write** - Write operations on releases
   - **Required OAuth Scopes**: `repo`
-  - `body`: Release notes in markdown. (string, optional)
+  - `body`: Release notes in markdown. On 'update', pass an empty string to clear them; omit it to leave the current notes unchanged. (string, optional)
   - `configuration_file_path`: Path to a release notes configuration file for 'generate_notes' (defaults to .github/release.yml). (string, optional)
   - `discussion_category_name`: Create a discussion of this category for the release. The category must already exist in the repository. (string, optional)
   - `draft`: Whether the release is a draft (unpublished). (boolean, optional)
   - `generate_release_notes`: Auto-generate release notes on 'create'. When body is also given, the generated notes are appended to it. (boolean, optional)
   - `make_latest`: Whether to mark this release as the repository's latest. 'legacy' defers to GitHub's date-and-semver heuristic. (string, optional)
   - `method`: Operation to perform: 'create', 'update', 'delete', or 'generate_notes' (string, required)
-  - `name`: Release title. (string, optional)
+  - `name`: Release title. On 'update', pass an empty string to clear it; omit it to leave the current title unchanged. (string, optional)
   - `owner`: Repository owner (username or organization name) (string, required)
   - `prerelease`: Whether the release is a prerelease. (boolean, optional)
   - `previous_tag_name`: Tag to generate notes against for 'generate_notes'. Defaults to the previous release's tag. (string, optional)

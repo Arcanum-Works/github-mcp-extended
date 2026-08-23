@@ -82,11 +82,11 @@ func ReleaseWrite(t translations.TranslationHelperFunc) inventory.ServerTool {
 					},
 					"name": {
 						Type:        "string",
-						Description: "Release title.",
+						Description: "Release title. On 'update', pass an empty string to clear it; omit it to leave the current title unchanged.",
 					},
 					"body": {
 						Type:        "string",
-						Description: "Release notes in markdown.",
+						Description: "Release notes in markdown. On 'update', pass an empty string to clear them; omit it to leave the current notes unchanged.",
 					},
 					"draft": {
 						Type:        "boolean",
@@ -150,11 +150,16 @@ func ReleaseWrite(t translations.TranslationHelperFunc) inventory.ServerTool {
 			if err != nil {
 				return utils.NewToolResultError(err.Error()), nil, nil
 			}
-			name, err := OptionalParam[string](args, "name")
+			// name and body are the only release fields GitHub lets an update
+			// clear, so they are read with a presence flag: OptionalParam
+			// collapses "omitted" and "explicitly empty" into the same empty
+			// string, which would turn `"body": ""` into a no-op instead of a
+			// clear.
+			name, nameSet, err := OptionalParamOK[string](args, "name")
 			if err != nil {
 				return utils.NewToolResultError(err.Error()), nil, nil
 			}
-			body, err := OptionalParam[string](args, "body")
+			body, bodySet, err := OptionalParamOK[string](args, "body")
 			if err != nil {
 				return utils.NewToolResultError(err.Error()), nil, nil
 			}
@@ -228,10 +233,19 @@ func ReleaseWrite(t translations.TranslationHelperFunc) inventory.ServerTool {
 
 				req := github.UpdateReleaseRequest{
 					TargetCommitish:        ToStringPtr(targetCommitish),
-					Name:                   ToStringPtr(name),
-					Body:                   ToStringPtr(body),
 					MakeLatest:             ToStringPtr(makeLatest),
 					DiscussionCategoryName: ToStringPtr(discussionCategory),
+				}
+				// An explicitly empty name or body is a clear and has to reach
+				// the API; an omitted one stays out of the request so the
+				// stored value survives. target_commitish, make_latest and
+				// discussion_category_name have no empty form the API accepts,
+				// so they stay omit-when-empty.
+				if nameSet {
+					req.Name = github.Ptr(name)
+				}
+				if bodySet {
+					req.Body = github.Ptr(body)
 				}
 				// Retagging is only meaningful when the caller addressed the
 				// release by ID; when tag_name was the lookup key, resending it

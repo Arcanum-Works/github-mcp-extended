@@ -9,7 +9,7 @@
   "inputSchema": {
     "properties": {
       "body": {
-        "description": "Release notes in markdown.",
+        "description": "Release notes in markdown. On 'update', pass an empty string to clear them; omit it to leave the current notes unchanged.",
         "type": "string"
       },
       "configuration_file_path": {
@@ -48,7 +48,7 @@
         "type": "string"
       },
       "name": {
-        "description": "Release title.",
+        "description": "Release title. On 'update', pass an empty string to clear it; omit it to leave the current title unchanged.",
         "type": "string"
       },
       "owner": {

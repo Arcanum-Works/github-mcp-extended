@@ -3,6 +3,7 @@ package github
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"testing"
 
@@ -191,6 +192,165 @@ func Test_MilestoneWrite(t *testing.T) {
 				"repo":   "repo",
 				"title":  "v1.0",
 				"state":  "closed",
+			},
+		},
+		{
+			name: "update by number renames the milestone",
+			mockedClient: NewMockedHTTPClient(
+				WithRequestMatchHandler(patchReposMilestonesByOwnerByRepoByMilestoneNumber,
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						assert.Equal(t, "/repos/owner/repo/milestones/7", r.URL.Path)
+
+						var payload map[string]any
+						require.NoError(t, json.NewDecoder(r.Body).Decode(&payload))
+						// The number identified the milestone, so the title is
+						// a rename rather than a lookup key.
+						assert.Equal(t, "v1.1", payload["title"])
+
+						w.WriteHeader(http.StatusOK)
+						_, _ = w.Write(MustMarshal(created))
+					}),
+				),
+			),
+			requestArgs: map[string]any{
+				"method":           "update",
+				"owner":            "owner",
+				"repo":             "repo",
+				"milestone_number": float64(7),
+				"title":            "v1.1",
+			},
+		},
+		{
+			name: "update leaves an omitted description and due date alone",
+			mockedClient: NewMockedHTTPClient(
+				WithRequestMatchHandler(patchReposMilestonesByOwnerByRepoByMilestoneNumber,
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						var payload map[string]any
+						require.NoError(t, json.NewDecoder(r.Body).Decode(&payload))
+						// Neither was mentioned, so neither may be sent:
+						// sending them empty would wipe what is stored.
+						assert.NotContains(t, payload, "description")
+						assert.NotContains(t, payload, "due_on")
+						assert.NotContains(t, payload, "title")
+						assert.Equal(t, "closed", payload["state"])
+
+						w.WriteHeader(http.StatusOK)
+						_, _ = w.Write(MustMarshal(created))
+					}),
+				),
+			),
+			requestArgs: map[string]any{
+				"method":           "update",
+				"owner":            "owner",
+				"repo":             "repo",
+				"milestone_number": float64(7),
+				"state":            "closed",
+			},
+		},
+		{
+			name: "an explicitly empty description clears it",
+			mockedClient: NewMockedHTTPClient(
+				WithRequestMatchHandler(patchReposMilestonesByOwnerByRepoByMilestoneNumber,
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						var payload map[string]any
+						require.NoError(t, json.NewDecoder(r.Body).Decode(&payload))
+						require.Contains(t, payload, "description", "an explicit empty description is a clear and has to be sent")
+						assert.Equal(t, "", payload["description"])
+						// Nothing the caller did not ask about may ride along.
+						assert.NotContains(t, payload, "due_on")
+						assert.NotContains(t, payload, "state")
+						assert.NotContains(t, payload, "title")
+
+						w.WriteHeader(http.StatusOK)
+						_, _ = w.Write(MustMarshal(created))
+					}),
+				),
+			),
+			requestArgs: map[string]any{
+				"method":           "update",
+				"owner":            "owner",
+				"repo":             "repo",
+				"milestone_number": float64(7),
+				"description":      "",
+			},
+		},
+		{
+			name: "an explicitly empty due_on clears the due date",
+			mockedClient: NewMockedHTTPClient(
+				WithRequestMatchHandler(patchReposMilestonesByOwnerByRepoByMilestoneNumber,
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						body, err := io.ReadAll(r.Body)
+						require.NoError(t, err)
+						// The REST API clears a due date with an explicit
+						// null, which is why the update payload is built as a
+						// map: github.Milestone tags DueOn omitempty and would
+						// drop it.
+						assert.Contains(t, string(body), `"due_on":null`)
+
+						var payload map[string]any
+						require.NoError(t, json.Unmarshal(body, &payload))
+						require.Contains(t, payload, "due_on")
+						assert.Nil(t, payload["due_on"])
+						assert.NotContains(t, payload, "description")
+
+						w.WriteHeader(http.StatusOK)
+						_, _ = w.Write(MustMarshal(created))
+					}),
+				),
+			),
+			requestArgs: map[string]any{
+				"method":           "update",
+				"owner":            "owner",
+				"repo":             "repo",
+				"milestone_number": float64(7),
+				"due_on":           "",
+			},
+		},
+		{
+			name: "update with a due date still pins it to the end of the day",
+			mockedClient: NewMockedHTTPClient(
+				WithRequestMatchHandler(patchReposMilestonesByOwnerByRepoByMilestoneNumber,
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						var payload map[string]any
+						require.NoError(t, json.NewDecoder(r.Body).Decode(&payload))
+						assert.Equal(t, "2026-09-01T23:59:59Z", payload["due_on"])
+
+						w.WriteHeader(http.StatusOK)
+						_, _ = w.Write(MustMarshal(created))
+					}),
+				),
+			),
+			requestArgs: map[string]any{
+				"method":           "update",
+				"owner":            "owner",
+				"repo":             "repo",
+				"milestone_number": float64(7),
+				"due_on":           "2026-09-01",
+			},
+		},
+		{
+			name: "create still omits an empty description",
+			mockedClient: NewMockedHTTPClient(
+				WithRequestMatchHandler(postReposMilestonesByOwnerByRepo,
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						var payload map[string]any
+						require.NoError(t, json.NewDecoder(r.Body).Decode(&payload))
+						// There is nothing to clear on a create, so the empty
+						// value is simply left out.
+						assert.NotContains(t, payload, "description")
+						assert.Equal(t, "v1.0", payload["title"])
+
+						w.WriteHeader(http.StatusCreated)
+						_, _ = w.Write(MustMarshal(created))
+					}),
+				),
+			),
+			requestArgs: map[string]any{
+				"method":      "create",
+				"owner":       "owner",
+				"repo":        "repo",
+				"title":       "v1.0",
+				"description": "",
 			},
 		},
 		{

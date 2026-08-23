@@ -135,6 +135,139 @@ func Test_ReleaseWrite(t *testing.T) {
 			},
 		},
 		{
+			name: "update leaves an omitted body alone",
+			mockedClient: NewMockedHTTPClient(
+				WithRequestMatchHandler(patchReposReleasesByOwnerByRepoByReleaseID,
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						var payload map[string]any
+						require.NoError(t, json.NewDecoder(r.Body).Decode(&payload))
+						// The caller never mentioned body, so it must not be
+						// sent at all: an empty body would wipe the release
+						// notes that are already there.
+						assert.NotContains(t, payload, "body")
+						assert.Equal(t, "v1.2.3 final", payload["name"])
+
+						w.WriteHeader(http.StatusOK)
+						_, _ = w.Write(MustMarshal(createdRelease))
+					}),
+				),
+			),
+			requestArgs: map[string]any{
+				"method":     "update",
+				"owner":      "owner",
+				"repo":       "repo",
+				"release_id": float64(42),
+				"name":       "v1.2.3 final",
+			},
+		},
+		{
+			name: "an explicitly empty body clears the release notes",
+			mockedClient: NewMockedHTTPClient(
+				WithRequestMatchHandler(patchReposReleasesByOwnerByRepoByReleaseID,
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						var payload map[string]any
+						require.NoError(t, json.NewDecoder(r.Body).Decode(&payload))
+						require.Contains(t, payload, "body", "an explicit empty body is a clear and has to be sent")
+						assert.Equal(t, "", payload["body"])
+						// Nothing the caller did not ask about may ride along.
+						assert.NotContains(t, payload, "name")
+						assert.NotContains(t, payload, "tag_name")
+						assert.NotContains(t, payload, "target_commitish")
+						assert.NotContains(t, payload, "draft")
+						assert.NotContains(t, payload, "prerelease")
+						assert.NotContains(t, payload, "make_latest")
+						assert.NotContains(t, payload, "discussion_category_name")
+
+						w.WriteHeader(http.StatusOK)
+						_, _ = w.Write(MustMarshal(createdRelease))
+					}),
+				),
+			),
+			requestArgs: map[string]any{
+				"method":     "update",
+				"owner":      "owner",
+				"repo":       "repo",
+				"release_id": float64(42),
+				"body":       "",
+			},
+		},
+		{
+			name: "an explicitly empty name clears the release title",
+			mockedClient: NewMockedHTTPClient(
+				WithRequestMatchHandler(patchReposReleasesByOwnerByRepoByReleaseID,
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						var payload map[string]any
+						require.NoError(t, json.NewDecoder(r.Body).Decode(&payload))
+						require.Contains(t, payload, "name", "an explicit empty name is a clear and has to be sent")
+						assert.Equal(t, "", payload["name"])
+						assert.NotContains(t, payload, "body")
+
+						w.WriteHeader(http.StatusOK)
+						_, _ = w.Write(MustMarshal(createdRelease))
+					}),
+				),
+			),
+			requestArgs: map[string]any{
+				"method":     "update",
+				"owner":      "owner",
+				"repo":       "repo",
+				"release_id": float64(42),
+				"name":       "",
+			},
+		},
+		{
+			name: "update by tag with an empty body still does not retag",
+			mockedClient: NewMockedHTTPClient(
+				WithRequestMatch(getReposReleasesTagsByOwnerByRepoByTagForTest, createdRelease),
+				WithRequestMatchHandler(patchReposReleasesByOwnerByRepoByReleaseID,
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						var payload map[string]any
+						require.NoError(t, json.NewDecoder(r.Body).Decode(&payload))
+						// The tag is the lookup key here, so clearing the body
+						// must not turn it into a rename of the tag.
+						assert.NotContains(t, payload, "tag_name")
+						require.Contains(t, payload, "body")
+						assert.Equal(t, "", payload["body"])
+
+						w.WriteHeader(http.StatusOK)
+						_, _ = w.Write(MustMarshal(createdRelease))
+					}),
+				),
+			),
+			requestArgs: map[string]any{
+				"method":   "update",
+				"owner":    "owner",
+				"repo":     "repo",
+				"tag_name": "v1.2.3",
+				"body":     "",
+			},
+		},
+		{
+			name: "create still omits an empty body",
+			mockedClient: NewMockedHTTPClient(
+				WithRequestMatchHandler(postReposReleasesByOwnerByRepo,
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						var payload map[string]any
+						require.NoError(t, json.NewDecoder(r.Body).Decode(&payload))
+						// There is nothing to clear on a create, so the empty
+						// value is simply left out.
+						assert.NotContains(t, payload, "body")
+						assert.Equal(t, "v1.2.3", payload["tag_name"])
+
+						w.WriteHeader(http.StatusCreated)
+						_, _ = w.Write(MustMarshal(createdRelease))
+					}),
+				),
+			),
+			requestArgs: map[string]any{
+				"method":   "create",
+				"owner":    "owner",
+				"repo":     "repo",
+				"tag_name": "v1.2.3",
+				"body":     "",
+			},
+		},
+		{
 			name:         "update without an identifier is rejected",
 			mockedClient: NewMockedHTTPClient(),
 			requestArgs: map[string]any{

@@ -9,11 +9,11 @@
   "inputSchema": {
     "properties": {
       "description": {
-        "description": "Milestone description.",
+        "description": "Milestone description. On 'update', pass an empty string to clear it; omit it to leave the current description unchanged.",
         "type": "string"
       },
       "due_on": {
-        "description": "Due date as YYYY-MM-DD. Interpreted as the end of that day in UTC.",
+        "description": "Due date as YYYY-MM-DD. Interpreted as the end of that day in UTC. On 'update', pass an empty string to clear the due date; omit it to leave the current one unchanged.",
         "type": "string"
       },
       "method": {
