@@ -34,6 +34,22 @@ type MinimalActionsCache struct {
 	LastAccessedAt string `json:"last_accessed_at,omitempty"`
 }
 
+// MinimalActionsCacheUsage is the trimmed output type for a repository's
+// Actions cache storage usage.
+type MinimalActionsCacheUsage struct {
+	FullName          string `json:"full_name"`
+	ActiveCachesCount int    `json:"active_caches_count"`
+	ActiveCachesBytes int64  `json:"active_caches_size_in_bytes"`
+}
+
+func convertToMinimalActionsCacheUsage(u *github.ActionsCacheUsage) MinimalActionsCacheUsage {
+	return MinimalActionsCacheUsage{
+		FullName:          u.GetFullName(),
+		ActiveCachesCount: u.GetActiveCachesCount(),
+		ActiveCachesBytes: u.GetActiveCachesSizeInBytes(),
+	}
+}
+
 func convertToMinimalActionsCache(c *github.ActionsCache) MinimalActionsCache {
 	m := MinimalActionsCache{
 		ID:          c.GetID(),
@@ -152,7 +168,7 @@ func ActionsCacheRead(t translations.TranslationHelperFunc) inventory.ServerTool
 					return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to get Actions cache usage", resp, err), nil, nil
 				}
 				defer func() { _ = resp.Body.Close() }()
-				return marshalGovernanceResult(usage, nil)
+				return marshalGovernanceResult(convertToMinimalActionsCacheUsage(usage), nil)
 
 			default:
 				return utils.NewToolResultError(fmt.Sprintf("unknown method: %s. Supported methods are: list, usage", method)), nil, nil

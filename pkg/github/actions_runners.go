@@ -34,7 +34,10 @@ type MinimalRunner struct {
 	Name   string `json:"name,omitempty"`
 	OS     string `json:"os,omitempty"`
 	Status string `json:"status,omitempty"`
-	Busy   bool   `json:"busy,omitempty"`
+	// Busy has no omitempty: false is a meaningful, common state (the runner
+	// is idle), and omitting it would make "confirmed idle" indistinguishable
+	// from "unknown".
+	Busy bool `json:"busy"`
 }
 
 func convertToMinimalRunner(r *github.Runner) MinimalRunner {
@@ -44,6 +47,41 @@ func convertToMinimalRunner(r *github.Runner) MinimalRunner {
 		OS:     r.GetOS(),
 		Status: r.GetStatus(),
 		Busy:   r.GetBusy(),
+	}
+}
+
+// resolveRunnerScope reads and validates the repository/organization scope
+// selector shared by the runner tools, returning the resolved identifiers
+// for whichever scope was selected.
+func resolveRunnerScope(args map[string]any) (isOrg bool, org, owner, repo string, errResult *mcp.CallToolResult) {
+	raw, err := OptionalParam[string](args, "scope")
+	if err != nil {
+		return false, "", "", "", utils.NewToolResultError(err.Error())
+	}
+	scope := strings.ToLower(raw)
+	if scope == "" {
+		scope = runnersScopeRepo
+	}
+
+	switch scope {
+	case runnersScopeOrg:
+		org, err = RequiredParam[string](args, "org")
+		if err != nil {
+			return false, "", "", "", utils.NewToolResultError(err.Error())
+		}
+		return true, org, "", "", nil
+	case runnersScopeRepo:
+		owner, err = RequiredParam[string](args, "owner")
+		if err != nil {
+			return false, "", "", "", utils.NewToolResultError(err.Error())
+		}
+		repo, err = RequiredParam[string](args, "repo")
+		if err != nil {
+			return false, "", "", "", utils.NewToolResultError(err.Error())
+		}
+		return false, "", owner, repo, nil
+	default:
+		return false, "", "", "", utils.NewToolResultError(fmt.Sprintf("unknown scope: %s", scope))
 	}
 }
 
@@ -93,7 +131,7 @@ func ActionsRunnersRead(t translations.TranslationHelperFunc) inventory.ServerTo
 				Required: []string{"method"},
 			}),
 		},
-		[]scopes.Scope{scopes.Repo},
+		[]scopes.Scope{scopes.Repo, scopes.ReadOrg},
 		func(ctx context.Context, deps ToolDependencies, _ *mcp.CallToolRequest, args map[string]any) (*mcp.CallToolResult, any, error) {
 			method, err := RequiredParam[string](args, "method")
 			if err != nil {
@@ -101,12 +139,9 @@ func ActionsRunnersRead(t translations.TranslationHelperFunc) inventory.ServerTo
 			}
 			method = strings.ToLower(method)
 
-			scope, err := OptionalParam[string](args, "scope")
-			if err != nil {
-				return utils.NewToolResultError(err.Error()), nil, nil
-			}
-			if scope == "" {
-				scope = runnersScopeRepo
+			isOrg, org, owner, repo, errResult := resolveRunnerScope(args)
+			if errResult != nil {
+				return errResult, nil, nil
 			}
 			pagination, err := OptionalPaginationParams(args)
 			if err != nil {
@@ -122,11 +157,7 @@ func ActionsRunnersRead(t translations.TranslationHelperFunc) inventory.ServerTo
 			case runnersMethodList:
 				listOpts := &github.ListRunnersOptions{ListOptions: github.ListOptions{Page: pagination.Page, PerPage: pagination.PerPage}}
 
-				if scope == runnersScopeOrg {
-					org, err := RequiredParam[string](args, "org")
-					if err != nil {
-						return utils.NewToolResultError(err.Error()), nil, nil
-					}
+				if isOrg {
 					runners, resp, err := client.Actions.ListOrganizationRunners(ctx, org, listOpts)
 					if err != nil {
 						return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to list organization runners", resp, err), nil, nil
@@ -135,14 +166,6 @@ func ActionsRunnersRead(t translations.TranslationHelperFunc) inventory.ServerTo
 					return marshalGovernanceResult(minimalRunners(runners.Runners), nil)
 				}
 
-				owner, err := RequiredParam[string](args, "owner")
-				if err != nil {
-					return utils.NewToolResultError(err.Error()), nil, nil
-				}
-				repo, err := RequiredParam[string](args, "repo")
-				if err != nil {
-					return utils.NewToolResultError(err.Error()), nil, nil
-				}
 				runners, resp, err := client.Actions.ListRunners(ctx, owner, repo, listOpts)
 				if err != nil {
 					return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to list repository runners", resp, err), nil, nil
@@ -156,11 +179,7 @@ func ActionsRunnersRead(t translations.TranslationHelperFunc) inventory.ServerTo
 					return utils.NewToolResultError(err.Error()), nil, nil
 				}
 
-				if scope == runnersScopeOrg {
-					org, err := RequiredParam[string](args, "org")
-					if err != nil {
-						return utils.NewToolResultError(err.Error()), nil, nil
-					}
+				if isOrg {
 					runner, resp, err := client.Actions.GetOrganizationRunner(ctx, org, int64(runnerID))
 					if err != nil {
 						return ghErrors.NewGitHubAPIErrorResponse(ctx, fmt.Sprintf("failed to get organization runner %d", runnerID), resp, err), nil, nil
@@ -169,14 +188,6 @@ func ActionsRunnersRead(t translations.TranslationHelperFunc) inventory.ServerTo
 					return marshalGovernanceResult(convertToMinimalRunner(runner), nil)
 				}
 
-				owner, err := RequiredParam[string](args, "owner")
-				if err != nil {
-					return utils.NewToolResultError(err.Error()), nil, nil
-				}
-				repo, err := RequiredParam[string](args, "repo")
-				if err != nil {
-					return utils.NewToolResultError(err.Error()), nil, nil
-				}
 				runner, resp, err := client.Actions.GetRunner(ctx, owner, repo, int64(runnerID))
 				if err != nil {
 					return ghErrors.NewGitHubAPIErrorResponse(ctx, fmt.Sprintf("failed to get runner %d", runnerID), resp, err), nil, nil
@@ -247,7 +258,7 @@ func ActionsRunnerWrite(t translations.TranslationHelperFunc) inventory.ServerTo
 				Required: []string{"method", "runner_id"},
 			},
 		},
-		[]scopes.Scope{scopes.Repo},
+		[]scopes.Scope{scopes.Repo, scopes.WriteOrg},
 		func(ctx context.Context, deps ToolDependencies, _ *mcp.CallToolRequest, args map[string]any) (*mcp.CallToolResult, any, error) {
 			method, err := RequiredParam[string](args, "method")
 			if err != nil {
@@ -262,12 +273,9 @@ func ActionsRunnerWrite(t translations.TranslationHelperFunc) inventory.ServerTo
 			if err != nil {
 				return utils.NewToolResultError(err.Error()), nil, nil
 			}
-			scope, err := OptionalParam[string](args, "scope")
-			if err != nil {
-				return utils.NewToolResultError(err.Error()), nil, nil
-			}
-			if scope == "" {
-				scope = runnersScopeRepo
+			isOrg, org, owner, repo, errResult := resolveRunnerScope(args)
+			if errResult != nil {
+				return errResult, nil, nil
 			}
 
 			client, err := deps.GetClient(ctx)
@@ -275,11 +283,7 @@ func ActionsRunnerWrite(t translations.TranslationHelperFunc) inventory.ServerTo
 				return nil, nil, fmt.Errorf("failed to get GitHub client: %w", err)
 			}
 
-			if scope == runnersScopeOrg {
-				org, err := RequiredParam[string](args, "org")
-				if err != nil {
-					return utils.NewToolResultError(err.Error()), nil, nil
-				}
+			if isOrg {
 				resp, err := client.Actions.RemoveOrganizationRunner(ctx, org, int64(runnerID))
 				if err != nil {
 					return ghErrors.NewGitHubAPIErrorResponse(ctx, fmt.Sprintf("failed to remove organization runner %d", runnerID), resp, err), nil, nil
@@ -288,14 +292,6 @@ func ActionsRunnerWrite(t translations.TranslationHelperFunc) inventory.ServerTo
 				return marshalGovernanceResult(map[string]any{"result": "runner_removed", "runner_id": runnerID}, nil)
 			}
 
-			owner, err := RequiredParam[string](args, "owner")
-			if err != nil {
-				return utils.NewToolResultError(err.Error()), nil, nil
-			}
-			repo, err := RequiredParam[string](args, "repo")
-			if err != nil {
-				return utils.NewToolResultError(err.Error()), nil, nil
-			}
 			resp, err := client.Actions.RemoveRunner(ctx, owner, repo, int64(runnerID))
 			if err != nil {
 				return ghErrors.NewGitHubAPIErrorResponse(ctx, fmt.Sprintf("failed to remove runner %d", runnerID), resp, err), nil, nil

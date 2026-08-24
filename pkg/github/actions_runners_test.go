@@ -121,10 +121,38 @@ func Test_ActionsRunnersRead(t *testing.T) {
 		deps := BaseDeps{Client: client}
 		handler := serverTool.Handler(deps)
 
-		request := createMCPRequest(map[string]any{"method": "nope"})
+		request := createMCPRequest(map[string]any{"method": "nope", "owner": "owner", "repo": "repo"})
 		result, err := handler(ContextWithDeps(context.Background(), deps), &request)
 		require.NoError(t, err)
 		assert.Contains(t, getErrorResult(t, result).Text, "unknown method")
+	})
+
+	t.Run("unknown scope is rejected", func(t *testing.T) {
+		client := mustNewGHClient(t, NewMockedHTTPClient())
+		deps := BaseDeps{Client: client}
+		handler := serverTool.Handler(deps)
+
+		request := createMCPRequest(map[string]any{"method": "list", "scope": "nope"})
+		result, err := handler(ContextWithDeps(context.Background(), deps), &request)
+		require.NoError(t, err)
+		assert.Contains(t, getErrorResult(t, result).Text, "unknown scope")
+	})
+
+	t.Run("scope is case-insensitive", func(t *testing.T) {
+		client := mustNewGHClient(t, NewMockedHTTPClient(
+			WithRequestMatch(getOrgsActionsRunnersByOrg, &github.Runners{
+				TotalCount: 1,
+				Runners:    []*github.Runner{{ID: github.Ptr(int64(2)), Name: github.Ptr("org-runner")}},
+			}),
+		))
+		deps := BaseDeps{Client: client}
+		handler := serverTool.Handler(deps)
+
+		request := createMCPRequest(map[string]any{"method": "list", "scope": "Organization", "org": "acme"})
+		result, err := handler(ContextWithDeps(context.Background(), deps), &request)
+		require.NoError(t, err)
+		require.False(t, result.IsError, "unexpected tool error: %v", result.Content)
+		assert.Contains(t, getTextResult(t, result).Text, "org-runner")
 	})
 }
 
