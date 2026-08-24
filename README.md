@@ -758,7 +758,8 @@ The following sets of tools are available:
   - `workflow`: Workflow file name, e.g. 'deploy.yml', or its numeric ID. Required for 'enable_workflow' and 'disable_workflow'. (string, optional)
 
 - **actions_runner_write** - Manage Actions runners
-  - **Required OAuth Scopes**: `repo`
+  - **Required OAuth Scopes (any of)**: `repo`, `write:org`
+  - **Accepted OAuth Scopes**: `admin:org`, `repo`, `write:org`
   - `method`: The operation to perform:
     - remove: deregister a runner (string, required)
   - `org`: Organization login. Required when scope is 'organization'. (string, optional)
@@ -768,7 +769,8 @@ The following sets of tools are available:
   - `scope`: Where the runner is registered. Defaults to 'repository'. (string, optional)
 
 - **actions_runners_read** - Read Actions runners
-  - **Required OAuth Scopes**: `repo`
+  - **Required OAuth Scopes (any of)**: `repo`, `read:org`
+  - **Accepted OAuth Scopes**: `admin:org`, `read:org`, `repo`, `write:org`
   - `method`: The method to execute:
     - list: all self-hosted runners in scope
     - get: one runner's details (string, required)
@@ -812,7 +814,8 @@ The following sets of tools are available:
   - `value`: Variable value. Required for 'create_or_update'. (string, optional)
 
 - **actions_variables_read** - Read Actions variables
-  - **Required OAuth Scopes**: `repo`
+  - **Required OAuth Scopes (any of)**: `repo`, `read:org`
+  - **Accepted OAuth Scopes**: `admin:org`, `read:org`, `repo`, `write:org`
   - `environment_name`: Environment name. Required when scope is 'environment'. (string, optional)
   - `method`: The method to execute: 'list' for every variable in scope, 'get' for one by name (string, required)
   - `name`: Variable name. Required for 'get'. (string, optional)
