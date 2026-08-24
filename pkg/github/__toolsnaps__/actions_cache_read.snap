@@ -1,0 +1,54 @@
+{
+  "annotations": {
+    "idempotentHint": false,
+    "readOnlyHint": true,
+    "title": "Read Actions caches"
+  },
+  "description": "Read a repository's GitHub Actions caches: list them, optionally filtered by key or ref, or get overall cache storage usage.",
+  "inputSchema": {
+    "properties": {
+      "key": {
+        "description": "Only list caches with this key. Used by 'list'.",
+        "type": "string"
+      },
+      "method": {
+        "description": "The method to execute:\n- list: caches stored for the repository\n- usage: total cache count and size for the repository",
+        "enum": [
+          "list",
+          "usage"
+        ],
+        "type": "string"
+      },
+      "owner": {
+        "description": "Repository owner (username or organization name)",
+        "type": "string"
+      },
+      "page": {
+        "description": "Page number for pagination (min 1)",
+        "minimum": 1,
+        "type": "number"
+      },
+      "perPage": {
+        "description": "Results per page for pagination (min 1, max 100)",
+        "maximum": 100,
+        "minimum": 1,
+        "type": "number"
+      },
+      "ref": {
+        "description": "Only list caches for this Git ref, e.g. 'refs/heads/main'. Used by 'list'.",
+        "type": "string"
+      },
+      "repo": {
+        "description": "Repository name",
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "owner",
+      "repo"
+    ],
+    "type": "object"
+  },
+  "name": "actions_cache_read"
+}
