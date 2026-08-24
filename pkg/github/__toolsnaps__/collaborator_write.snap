@@ -1,0 +1,61 @@
+{
+  "annotations": {
+    "destructiveHint": true,
+    "idempotentHint": false,
+    "readOnlyHint": false,
+    "title": "Manage repository access"
+  },
+  "description": "Grant, change or revoke repository access for a user or a team. Adding a user who is not already a member sends an invitation, which they must accept before the access takes effect. Changing the role of an existing collaborator or team takes effect immediately.",
+  "inputSchema": {
+    "properties": {
+      "method": {
+        "description": "The operation to perform:\n- add_user: add a collaborator, or change the role of an existing one\n- remove_user: revoke a user's direct access\n- set_team: grant a team access, or change the role it holds\n- remove_team: revoke a team's access",
+        "enum": [
+          "add_user",
+          "remove_user",
+          "set_team",
+          "remove_team"
+        ],
+        "type": "string"
+      },
+      "org": {
+        "description": "Organization that owns the team. Defaults to the repository owner.",
+        "type": "string"
+      },
+      "owner": {
+        "description": "Repository owner (username or organization name)",
+        "type": "string"
+      },
+      "permission": {
+        "description": "Role to grant: 'pull' read, 'triage' manage issues and pull requests, 'push' write, 'maintain' manage without destructive actions, 'admin' full control. Defaults to 'push'.",
+        "enum": [
+          "pull",
+          "triage",
+          "push",
+          "maintain",
+          "admin"
+        ],
+        "type": "string"
+      },
+      "repo": {
+        "description": "Repository name",
+        "type": "string"
+      },
+      "team_slug": {
+        "description": "Team slug as it appears in the team's URL, not its display name. Required for 'set_team' and 'remove_team'.",
+        "type": "string"
+      },
+      "username": {
+        "description": "GitHub login. Required for 'add_user' and 'remove_user'.",
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "owner",
+      "repo"
+    ],
+    "type": "object"
+  },
+  "name": "collaborator_write"
+}

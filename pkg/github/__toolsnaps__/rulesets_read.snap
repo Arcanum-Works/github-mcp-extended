@@ -1,0 +1,63 @@
+{
+  "annotations": {
+    "idempotentHint": false,
+    "readOnlyHint": true,
+    "title": "Read repository rulesets"
+  },
+  "description": "Read the rulesets governing a repository: list them, get one by ID or name, or ask which rules are actually in force on a branch (including rules inherited from organization or enterprise rulesets).",
+  "inputSchema": {
+    "properties": {
+      "branch": {
+        "description": "Branch name. Required for 'get_branch_rules'.",
+        "type": "string"
+      },
+      "includes_parents": {
+        "description": "Include rulesets inherited from the organization or enterprise. Defaults to true. Used by 'list_rulesets' and 'get_ruleset'.",
+        "type": "boolean"
+      },
+      "method": {
+        "description": "The method to execute:\n- list_rulesets: every ruleset applying to the repository\n- get_ruleset: one ruleset in full, by ruleset_id or by name\n- get_branch_rules: the rules in force on a branch, whatever ruleset they come from",
+        "enum": [
+          "list_rulesets",
+          "get_ruleset",
+          "get_branch_rules"
+        ],
+        "type": "string"
+      },
+      "name": {
+        "description": "Ruleset name. Identifies the ruleset for 'get_ruleset' when ruleset_id is not given.",
+        "type": "string"
+      },
+      "owner": {
+        "description": "Repository owner (username or organization name)",
+        "type": "string"
+      },
+      "page": {
+        "description": "Page number for pagination (min 1)",
+        "minimum": 1,
+        "type": "number"
+      },
+      "perPage": {
+        "description": "Results per page for pagination (min 1, max 100)",
+        "maximum": 100,
+        "minimum": 1,
+        "type": "number"
+      },
+      "repo": {
+        "description": "Repository name",
+        "type": "string"
+      },
+      "ruleset_id": {
+        "description": "Numeric ruleset ID. Identifies the ruleset for 'get_ruleset'; takes precedence over name.",
+        "type": "number"
+      }
+    },
+    "required": [
+      "method",
+      "owner",
+      "repo"
+    ],
+    "type": "object"
+  },
+  "name": "rulesets_read"
+}
