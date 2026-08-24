@@ -1,0 +1,60 @@
+{
+  "annotations": {
+    "idempotentHint": false,
+    "readOnlyHint": true,
+    "title": "Read Actions runners"
+  },
+  "description": "Read self-hosted Actions runners: list them, or get one runner's status. Scoped to a repository or an organization.",
+  "inputSchema": {
+    "properties": {
+      "method": {
+        "description": "The method to execute:\n- list: all self-hosted runners in scope\n- get: one runner's details",
+        "enum": [
+          "list",
+          "get"
+        ],
+        "type": "string"
+      },
+      "org": {
+        "description": "Organization login. Required when scope is 'organization'.",
+        "type": "string"
+      },
+      "owner": {
+        "description": "Repository owner. Required when scope is 'repository'.",
+        "type": "string"
+      },
+      "page": {
+        "description": "Page number for pagination (min 1)",
+        "minimum": 1,
+        "type": "number"
+      },
+      "perPage": {
+        "description": "Results per page for pagination (min 1, max 100)",
+        "maximum": 100,
+        "minimum": 1,
+        "type": "number"
+      },
+      "repo": {
+        "description": "Repository name. Required when scope is 'repository'.",
+        "type": "string"
+      },
+      "runner_id": {
+        "description": "Runner ID. Required for 'get'.",
+        "type": "integer"
+      },
+      "scope": {
+        "description": "Where the runners are registered. Defaults to 'repository'.",
+        "enum": [
+          "repository",
+          "organization"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "method"
+    ],
+    "type": "object"
+  },
+  "name": "actions_runners_read"
+}

@@ -399,6 +399,12 @@ func AllTools(t translations.TranslationHelperFunc, opts ...ToolOption) []invent
 		OrgMembersRead(t),
 		OrgMemberWrite(t),
 
+		// Actions runners and cache tools
+		ActionsRunnersRead(t),
+		ActionsRunnerWrite(t),
+		ActionsCacheRead(t),
+		ActionsCacheWrite(t),
+
 		// Label tools
 		GetLabel(t),
 		GetLabelForLabelsToolset(t),

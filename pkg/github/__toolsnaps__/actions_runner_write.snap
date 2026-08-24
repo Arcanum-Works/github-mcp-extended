@@ -1,0 +1,50 @@
+{
+  "annotations": {
+    "destructiveHint": true,
+    "idempotentHint": false,
+    "readOnlyHint": false,
+    "title": "Manage Actions runners"
+  },
+  "description": "Deregister a self-hosted Actions runner from a repository or an organization. This removes the runner's registration only; it does not uninstall or stop the runner agent process on its machine.",
+  "inputSchema": {
+    "properties": {
+      "method": {
+        "description": "The operation to perform:\n- remove: deregister a runner",
+        "enum": [
+          "remove"
+        ],
+        "type": "string"
+      },
+      "org": {
+        "description": "Organization login. Required when scope is 'organization'.",
+        "type": "string"
+      },
+      "owner": {
+        "description": "Repository owner. Required when scope is 'repository'.",
+        "type": "string"
+      },
+      "repo": {
+        "description": "Repository name. Required when scope is 'repository'.",
+        "type": "string"
+      },
+      "runner_id": {
+        "description": "Runner ID to remove.",
+        "type": "integer"
+      },
+      "scope": {
+        "description": "Where the runner is registered. Defaults to 'repository'.",
+        "enum": [
+          "repository",
+          "organization"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "runner_id"
+    ],
+    "type": "object"
+  },
+  "name": "actions_runner_write"
+}

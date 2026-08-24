@@ -710,6 +710,29 @@ The following sets of tools are available:
 
 <summary><picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/tools-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/tools-light.png"><img src="pkg/octicons/icons/tools-light.png" width="20" height="20" alt="tools"></picture> Actions Admin</summary>
 
+- **actions_cache_read** - Read Actions caches
+  - **Required OAuth Scopes**: `repo`
+  - `key`: Only list caches with this key. Used by 'list'. (string, optional)
+  - `method`: The method to execute:
+    - list: caches stored for the repository
+    - usage: total cache count and size for the repository (string, required)
+  - `owner`: Repository owner (username or organization name) (string, required)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
+  - `ref`: Only list caches for this Git ref, e.g. 'refs/heads/main'. Used by 'list'. (string, optional)
+  - `repo`: Repository name (string, required)
+
+- **actions_cache_write** - Manage Actions caches
+  - **Required OAuth Scopes**: `repo`
+  - `cache_id`: Cache ID. Required for 'delete_by_id'. (integer, optional)
+  - `key`: Cache key. Required for 'delete_by_key'. (string, optional)
+  - `method`: The operation to perform:
+    - delete_by_id: delete one cache entry by its ID
+    - delete_by_key: delete all cache entries matching a key, optionally scoped to a ref (string, required)
+  - `owner`: Repository owner (username or organization name) (string, required)
+  - `ref`: Only delete cache entries for this Git ref, e.g. 'refs/heads/main'. Used by 'delete_by_key'. (string, optional)
+  - `repo`: Repository name (string, required)
+
 - **actions_config_read** - Read Actions configuration
   - **Required OAuth Scopes**: `repo`
   - `method`: The method to execute. Only 'get_permissions' is supported; it returns the whole configuration. (string, required)
@@ -733,6 +756,29 @@ The following sets of tools are available:
   - `repo`: Repository name (string, required)
   - `verified_allowed`: Allow actions from verified creators. Used by 'set_allowed_actions'. (boolean, optional)
   - `workflow`: Workflow file name, e.g. 'deploy.yml', or its numeric ID. Required for 'enable_workflow' and 'disable_workflow'. (string, optional)
+
+- **actions_runner_write** - Manage Actions runners
+  - **Required OAuth Scopes**: `repo`
+  - `method`: The operation to perform:
+    - remove: deregister a runner (string, required)
+  - `org`: Organization login. Required when scope is 'organization'. (string, optional)
+  - `owner`: Repository owner. Required when scope is 'repository'. (string, optional)
+  - `repo`: Repository name. Required when scope is 'repository'. (string, optional)
+  - `runner_id`: Runner ID to remove. (integer, required)
+  - `scope`: Where the runner is registered. Defaults to 'repository'. (string, optional)
+
+- **actions_runners_read** - Read Actions runners
+  - **Required OAuth Scopes**: `repo`
+  - `method`: The method to execute:
+    - list: all self-hosted runners in scope
+    - get: one runner's details (string, required)
+  - `org`: Organization login. Required when scope is 'organization'. (string, optional)
+  - `owner`: Repository owner. Required when scope is 'repository'. (string, optional)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
+  - `repo`: Repository name. Required when scope is 'repository'. (string, optional)
+  - `runner_id`: Runner ID. Required for 'get'. (integer, optional)
+  - `scope`: Where the runners are registered. Defaults to 'repository'. (string, optional)
 
 - **actions_secret_write** - Write Actions secrets
   - **Required OAuth Scopes**: `repo`

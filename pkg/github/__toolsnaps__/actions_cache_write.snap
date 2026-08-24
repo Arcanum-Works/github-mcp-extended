@@ -1,0 +1,48 @@
+{
+  "annotations": {
+    "destructiveHint": true,
+    "idempotentHint": false,
+    "readOnlyHint": false,
+    "title": "Manage Actions caches"
+  },
+  "description": "Delete a repository's GitHub Actions cache entries, either by cache ID or by key.",
+  "inputSchema": {
+    "properties": {
+      "cache_id": {
+        "description": "Cache ID. Required for 'delete_by_id'.",
+        "type": "integer"
+      },
+      "key": {
+        "description": "Cache key. Required for 'delete_by_key'.",
+        "type": "string"
+      },
+      "method": {
+        "description": "The operation to perform:\n- delete_by_id: delete one cache entry by its ID\n- delete_by_key: delete all cache entries matching a key, optionally scoped to a ref",
+        "enum": [
+          "delete_by_id",
+          "delete_by_key"
+        ],
+        "type": "string"
+      },
+      "owner": {
+        "description": "Repository owner (username or organization name)",
+        "type": "string"
+      },
+      "ref": {
+        "description": "Only delete cache entries for this Git ref, e.g. 'refs/heads/main'. Used by 'delete_by_key'.",
+        "type": "string"
+      },
+      "repo": {
+        "description": "Repository name",
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "owner",
+      "repo"
+    ],
+    "type": "object"
+  },
+  "name": "actions_cache_write"
+}
