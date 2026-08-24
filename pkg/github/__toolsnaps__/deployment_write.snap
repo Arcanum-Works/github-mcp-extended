@@ -1,0 +1,99 @@
+{
+  "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": false,
+    "readOnlyHint": false,
+    "title": "Record deployments"
+  },
+  "description": "Record a deployment, or record what happened to one. Creating a deployment asks GitHub to deploy a ref to an environment; recording a status afterwards is what makes the outcome and the deployed URL visible on the commit and in the environment's history.",
+  "inputSchema": {
+    "properties": {
+      "auto_inactive": {
+        "description": "On a successful status, mark earlier deployments to the same environment inactive. Defaults to true on GitHub's side.",
+        "type": "boolean"
+      },
+      "auto_merge": {
+        "description": "Let GitHub merge the default branch into the ref first, failing the request if that conflicts. Defaults to false, which deploys the ref exactly as it is.",
+        "type": "boolean"
+      },
+      "deployment_id": {
+        "description": "Deployment the status belongs to. Required for 'create_deployment_status'.",
+        "type": "number"
+      },
+      "description": {
+        "description": "Short description of the deployment or of its status.",
+        "type": "string"
+      },
+      "environment": {
+        "description": "Environment being deployed to, e.g. 'staging'. Defaults to 'production'.",
+        "type": "string"
+      },
+      "environment_url": {
+        "description": "Where the deployed code can be reached. This is what the environment links to once the deployment succeeds.",
+        "type": "string"
+      },
+      "log_url": {
+        "description": "Where the deployment output can be read, e.g. the workflow run.",
+        "type": "string"
+      },
+      "method": {
+        "description": "Operation to perform: 'create_deployment' or 'create_deployment_status'",
+        "enum": [
+          "create_deployment",
+          "create_deployment_status"
+        ],
+        "type": "string"
+      },
+      "owner": {
+        "description": "Repository owner (username or organization name)",
+        "type": "string"
+      },
+      "production_environment": {
+        "description": "Mark the environment as production. Defaults to GitHub's guess from the environment name.",
+        "type": "boolean"
+      },
+      "ref": {
+        "description": "Branch, tag or commit SHA to deploy. Required for 'create_deployment'.",
+        "type": "string"
+      },
+      "repo": {
+        "description": "Repository name",
+        "type": "string"
+      },
+      "required_contexts": {
+        "description": "Status check contexts that must pass before the deployment is created. Pass an empty array to skip the check entirely; omit it to let GitHub require every context on the ref.",
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "state": {
+        "description": "How the deployment is going. Required for 'create_deployment_status'.",
+        "enum": [
+          "queued",
+          "in_progress",
+          "success",
+          "failure",
+          "error",
+          "inactive"
+        ],
+        "type": "string"
+      },
+      "task": {
+        "description": "What the deployment does. Defaults to 'deploy'.",
+        "type": "string"
+      },
+      "transient_environment": {
+        "description": "Mark the environment as temporary, e.g. a per-pull-request preview that will disappear.",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "method",
+      "owner",
+      "repo"
+    ],
+    "type": "object"
+  },
+  "name": "deployment_write"
+}

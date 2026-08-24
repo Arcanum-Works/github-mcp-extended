@@ -589,11 +589,13 @@ The following sets of tools are available:
 | --- | ----------------------- | ------------------------------------------------------------- |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/person-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/person-light.png"><img src="pkg/octicons/icons/person-light.png" width="20" height="20" alt="person"></picture> | `context`               | **Strongly recommended**: Tools that provide context about the current user and GitHub context you are operating in |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/workflow-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/workflow-light.png"><img src="pkg/octicons/icons/workflow-light.png" width="20" height="20" alt="workflow"></picture> | `actions` | GitHub Actions workflows and CI/CD operations |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/tools-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/tools-light.png"><img src="pkg/octicons/icons/tools-light.png" width="20" height="20" alt="tools"></picture> | `actions_admin` | GitHub Actions configuration: variables, secrets, permissions policy and per-workflow enablement |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/code-square-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/code-square-light.png"><img src="pkg/octicons/icons/code-square-light.png" width="20" height="20" alt="code-square"></picture> | `code_quality` | GitHub Code Quality related tools |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/codescan-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/codescan-light.png"><img src="pkg/octicons/icons/codescan-light.png" width="20" height="20" alt="codescan"></picture> | `code_security` | Code security related tools, such as GitHub Code Scanning |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/copilot-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/copilot-light.png"><img src="pkg/octicons/icons/copilot-light.png" width="20" height="20" alt="copilot"></picture> | `copilot` | Copilot related tools |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/copilot-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/copilot-light.png"><img src="pkg/octicons/icons/copilot-light.png" width="20" height="20" alt="copilot"></picture> | `copilot_issue_intents` | Opt-in Copilot issue assignment tools that carry intent metadata (rationale, confidence, suggestion) |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/dependabot-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/dependabot-light.png"><img src="pkg/octicons/icons/dependabot-light.png" width="20" height="20" alt="dependabot"></picture> | `dependabot` | Dependabot tools |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/workflow-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/workflow-light.png"><img src="pkg/octicons/icons/workflow-light.png" width="20" height="20" alt="workflow"></picture> | `deployments` | Deployment environments, deployments and deployment statuses |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/comment-discussion-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/comment-discussion-light.png"><img src="pkg/octicons/icons/comment-discussion-light.png" width="20" height="20" alt="comment-discussion"></picture> | `discussions` | GitHub Discussions related tools |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/logo-gist-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/logo-gist-light.png"><img src="pkg/octicons/icons/logo-gist-light.png" width="20" height="20" alt="logo-gist"></picture> | `gists` | GitHub Gist related tools |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/git-branch-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/git-branch-light.png"><img src="pkg/octicons/icons/git-branch-light.png" width="20" height="20" alt="git-branch"></picture> | `git` | GitHub Git API related tools for low-level Git operations |
@@ -701,6 +703,79 @@ The following sets of tools are available:
   - `return_content`: Returns actual log content instead of URLs (boolean, optional)
   - `run_id`: The unique identifier of the workflow run. Required when failed_only is true to get logs for all failed jobs in the run. (number, optional)
   - `tail_lines`: Number of lines to return from the end of the log (number, optional)
+
+</details>
+
+<details>
+
+<summary><picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/tools-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/tools-light.png"><img src="pkg/octicons/icons/tools-light.png" width="20" height="20" alt="tools"></picture> Actions Admin</summary>
+
+- **actions_config_read** - Read Actions configuration
+  - **Required OAuth Scopes**: `repo`
+  - `method`: The method to execute. Only 'get_permissions' is supported; it returns the whole configuration. (string, required)
+  - `owner`: Repository owner (username or organization name) (string, required)
+  - `repo`: Repository name (string, required)
+
+- **actions_config_write** - Change Actions configuration
+  - **Required OAuth Scopes**: `repo`
+  - `allowed_actions`: Which actions workflows may use: 'all', 'local_only' for actions defined in this repository, or 'selected' for the allow-list set by 'set_allowed_actions'. Used by 'set_permissions'. (string, optional)
+  - `can_approve_pull_request_reviews`: Allow GitHub Actions to approve pull requests. Used by 'set_workflow_permissions'. (boolean, optional)
+  - `default_workflow_permissions`: What the default GITHUB_TOKEN may do in a workflow. Used by 'set_workflow_permissions'. (string, optional)
+  - `enabled`: Whether GitHub Actions runs in this repository at all. Used by 'set_permissions'. (boolean, optional)
+  - `github_owned_allowed`: Allow actions published by GitHub. Used by 'set_allowed_actions'. (boolean, optional)
+  - `method`: The operation to perform:
+    - set_permissions: enable or disable Actions, and choose which actions may be used
+    - set_allowed_actions: the allow-list applied when allowed_actions is 'selected'
+    - set_workflow_permissions: what the default GITHUB_TOKEN can do
+    - enable_workflow / disable_workflow: switch one workflow on or off (string, required)
+  - `owner`: Repository owner (username or organization name) (string, required)
+  - `patterns_allowed`: Specific actions to allow, e.g. ['octo-org/*', 'actions/checkout@v4']. Pass an empty array to allow no third-party actions. Used by 'set_allowed_actions'. (string[], optional)
+  - `repo`: Repository name (string, required)
+  - `verified_allowed`: Allow actions from verified creators. Used by 'set_allowed_actions'. (boolean, optional)
+  - `workflow`: Workflow file name, e.g. 'deploy.yml', or its numeric ID. Required for 'enable_workflow' and 'disable_workflow'. (string, optional)
+
+- **actions_secret_write** - Write Actions secrets
+  - **Required OAuth Scopes**: `repo`
+  - `environment_name`: Environment name. Required when scope is 'environment'. (string, optional)
+  - `method`: Operation to perform: 'create_or_update' or 'delete' (string, required)
+  - `name`: Secret name, e.g. 'DEPLOY_TOKEN'. (string, required)
+  - `owner`: Repository owner (username or organization name) (string, required)
+  - `repo`: Repository name (string, required)
+  - `scope`: Where the value lives: on the repository, or on one of its environments. Defaults to 'repository'. Organization scope is not available on this tool. (string, optional)
+  - `value`: The secret value. Required for 'create_or_update'. It is encrypted to the repository's or environment's public key before it leaves this server, is never returned by any tool, and is redacted from this server's logs. (string, optional)
+
+- **actions_secrets_read** - Read Actions secret metadata
+  - **Required OAuth Scopes**: `repo`
+  - `environment_name`: Environment name. Required when scope is 'environment'. (string, optional)
+  - `method`: The method to execute: 'list' for every secret in scope, 'get' for one secret's metadata by name (string, required)
+  - `name`: Secret name. Required for 'get'. (string, optional)
+  - `owner`: Repository owner (username or organization name) (string, required)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
+  - `repo`: Repository name (string, required)
+  - `scope`: Where the value lives: on the repository, or on one of its environments. Defaults to 'repository'. Organization scope is not available on this tool. (string, optional)
+
+- **actions_variable_write** - Write Actions variables
+  - **Required OAuth Scopes**: `repo`
+  - `environment_name`: Environment name. Required when scope is 'environment'. (string, optional)
+  - `method`: Operation to perform: 'create_or_update' or 'delete' (string, required)
+  - `name`: Variable name. (string, required)
+  - `owner`: Repository owner (username or organization name) (string, required)
+  - `repo`: Repository name (string, required)
+  - `scope`: Where the value lives: on the repository, or on one of its environments. Defaults to 'repository'. Organization scope is not available on this tool. (string, optional)
+  - `value`: Variable value. Required for 'create_or_update'. (string, optional)
+
+- **actions_variables_read** - Read Actions variables
+  - **Required OAuth Scopes**: `repo`
+  - `environment_name`: Environment name. Required when scope is 'environment'. (string, optional)
+  - `method`: The method to execute: 'list' for every variable in scope, 'get' for one by name (string, required)
+  - `name`: Variable name. Required for 'get'. (string, optional)
+  - `org`: Organization login. Defaults to owner when scope is 'organization'. (string, optional)
+  - `owner`: Repository owner (username or organization name) (string, required)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
+  - `repo`: Repository name. Not needed when scope is 'organization'. (string, optional)
+  - `scope`: Where the value lives: on the repository, on one of its environments, or on the organization. Defaults to 'repository'. (string, optional)
 
 </details>
 
@@ -818,6 +893,71 @@ The following sets of tools are available:
   - `repo`: The name of the repository. (string, required)
   - `severity`: Filter dependabot alerts by severity (string, optional)
   - `state`: Filter dependabot alerts by state. Defaults to open (string, optional)
+
+</details>
+
+<details>
+
+<summary><picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/workflow-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/workflow-light.png"><img src="pkg/octicons/icons/workflow-light.png" width="20" height="20" alt="workflow"></picture> Deployments</summary>
+
+- **deployment_write** - Record deployments
+  - **Required OAuth Scopes**: `repo`
+  - `auto_inactive`: On a successful status, mark earlier deployments to the same environment inactive. Defaults to true on GitHub's side. (boolean, optional)
+  - `auto_merge`: Let GitHub merge the default branch into the ref first, failing the request if that conflicts. Defaults to false, which deploys the ref exactly as it is. (boolean, optional)
+  - `deployment_id`: Deployment the status belongs to. Required for 'create_deployment_status'. (number, optional)
+  - `description`: Short description of the deployment or of its status. (string, optional)
+  - `environment`: Environment being deployed to, e.g. 'staging'. Defaults to 'production'. (string, optional)
+  - `environment_url`: Where the deployed code can be reached. This is what the environment links to once the deployment succeeds. (string, optional)
+  - `log_url`: Where the deployment output can be read, e.g. the workflow run. (string, optional)
+  - `method`: Operation to perform: 'create_deployment' or 'create_deployment_status' (string, required)
+  - `owner`: Repository owner (username or organization name) (string, required)
+  - `production_environment`: Mark the environment as production. Defaults to GitHub's guess from the environment name. (boolean, optional)
+  - `ref`: Branch, tag or commit SHA to deploy. Required for 'create_deployment'. (string, optional)
+  - `repo`: Repository name (string, required)
+  - `required_contexts`: Status check contexts that must pass before the deployment is created. Pass an empty array to skip the check entirely; omit it to let GitHub require every context on the ref. (string[], optional)
+  - `state`: How the deployment is going. Required for 'create_deployment_status'. (string, optional)
+  - `task`: What the deployment does. Defaults to 'deploy'. (string, optional)
+  - `transient_environment`: Mark the environment as temporary, e.g. a per-pull-request preview that will disappear. (boolean, optional)
+
+- **deployments_read** - Read deployments
+  - **Required OAuth Scopes**: `repo`
+  - `deployment_id`: Numeric deployment ID. Required for 'get_deployment' and 'list_deployment_statuses'. (number, optional)
+  - `environment`: Only list deployments to this environment. (string, optional)
+  - `method`: The method to execute:
+    - list_deployments: deployments, newest first, optionally filtered by environment, ref or SHA
+    - get_deployment: one deployment by ID
+    - list_deployment_statuses: the status history of one deployment, newest first (string, required)
+  - `owner`: Repository owner (username or organization name) (string, required)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
+  - `ref`: Only list deployments of this branch or tag. (string, optional)
+  - `repo`: Repository name (string, required)
+  - `sha`: Only list deployments of this commit SHA. Use this to go from a commit to what it deployed. (string, optional)
+  - `task`: Only list deployments for this task, e.g. 'deploy'. (string, optional)
+
+- **environment_write** - Configure deployment environments
+  - **Required OAuth Scopes**: `repo`
+  - `can_admins_bypass`: Allow repository admins to bypass the protection rules. (boolean, optional)
+  - `custom_branch_patterns`: Branch name patterns allowed to deploy, e.g. ['main', 'release/*']. Replaces the current patterns. Requires deployment_branch_policy 'custom'. (string[], optional)
+  - `deployment_branch_policy`: Which branches may deploy: 'all_branches', 'protected_branches', or 'custom' to restrict to the patterns in custom_branch_patterns. (string, optional)
+  - `environment_name`: Environment name, e.g. 'staging'. Created if it does not exist. (string, required)
+  - `method`: Operation to perform: 'create_or_update' or 'delete' (string, required)
+  - `owner`: Repository owner (username or organization name) (string, required)
+  - `prevent_self_review`: Prevent the user who triggered a deployment from approving it. (boolean, optional)
+  - `repo`: Repository name (string, required)
+  - `reviewers`: Users and teams that must approve a deployment. Replaces the current list; an empty array removes the review requirement. Identify each reviewer by login, team slug, or numeric id. (object[], optional)
+  - `wait_timer_minutes`: Minutes to delay before a deployment to this environment can proceed. 0 removes the delay. (number, optional)
+
+- **environments_read** - Read deployment environments
+  - **Required OAuth Scopes**: `repo`
+  - `environment_name`: Environment name, e.g. 'staging'. Required for 'get_environment'. (string, optional)
+  - `method`: The method to execute:
+    - list_environments: every environment in the repository
+    - get_environment: one environment in full, including its custom branch patterns (string, required)
+  - `owner`: Repository owner (username or organization name) (string, required)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
+  - `repo`: Repository name (string, required)
 
 </details>
 

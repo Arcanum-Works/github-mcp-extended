@@ -1,0 +1,50 @@
+{
+  "annotations": {
+    "idempotentHint": false,
+    "readOnlyHint": true,
+    "title": "Read deployment environments"
+  },
+  "description": "Read a repository's deployment environments and the protection rules guarding them: the wait timer, required reviewers, and which branches may deploy.",
+  "inputSchema": {
+    "properties": {
+      "environment_name": {
+        "description": "Environment name, e.g. 'staging'. Required for 'get_environment'.",
+        "type": "string"
+      },
+      "method": {
+        "description": "The method to execute:\n- list_environments: every environment in the repository\n- get_environment: one environment in full, including its custom branch patterns",
+        "enum": [
+          "list_environments",
+          "get_environment"
+        ],
+        "type": "string"
+      },
+      "owner": {
+        "description": "Repository owner (username or organization name)",
+        "type": "string"
+      },
+      "page": {
+        "description": "Page number for pagination (min 1)",
+        "minimum": 1,
+        "type": "number"
+      },
+      "perPage": {
+        "description": "Results per page for pagination (min 1, max 100)",
+        "maximum": 100,
+        "minimum": 1,
+        "type": "number"
+      },
+      "repo": {
+        "description": "Repository name",
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "owner",
+      "repo"
+    ],
+    "type": "object"
+  },
+  "name": "environments_read"
+}

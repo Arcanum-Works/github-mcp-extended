@@ -78,6 +78,22 @@ var (
 		Description: "GitHub Actions workflows and CI/CD operations",
 		Icon:        "workflow",
 	}
+	// ToolsetMetadataActionsAdmin holds the Actions configuration surface -
+	// variables, secrets and policy - kept apart from the actions toolset so
+	// that reading and running workflows does not also grant the ability to
+	// rewrite the credentials they run with.
+	ToolsetMetadataActionsAdmin = inventory.ToolsetMetadata{
+		ID:          "actions_admin",
+		Description: "GitHub Actions configuration: variables, secrets, permissions policy and per-workflow enablement",
+		Icon:        "tools",
+	}
+	// ToolsetMetadataDeployments covers what happens after a workflow runs:
+	// the environments code is deployed to and the deployment record itself.
+	ToolsetMetadataDeployments = inventory.ToolsetMetadata{
+		ID:          "deployments",
+		Description: "Deployment environments, deployments and deployment statuses",
+		Icon:        "workflow",
+	}
 	ToolsetMetadataCodeQuality = inventory.ToolsetMetadata{
 		ID:          "code_quality",
 		Description: "GitHub Code Quality related tools",
@@ -334,6 +350,20 @@ func AllTools(t translations.TranslationHelperFunc, opts ...ToolOption) []invent
 		ActionsGetJobLogs(t),
 		ChecksRead(t),
 		CommitStatusWrite(t),
+
+		// Actions configuration tools
+		ActionsVariablesRead(t),
+		ActionsVariableWrite(t),
+		ActionsSecretsRead(t),
+		ActionsSecretWrite(t),
+		ActionsConfigRead(t),
+		ActionsConfigWrite(t),
+
+		// Deployment tools
+		EnvironmentsRead(t),
+		EnvironmentWrite(t),
+		DeploymentsRead(t),
+		DeploymentWrite(t),
 
 		// Security advisories tools
 		ListGlobalSecurityAdvisories(t),
