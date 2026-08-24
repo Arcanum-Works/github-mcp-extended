@@ -37,6 +37,7 @@ func Test_ActionsVariablesRead(t *testing.T) {
 	assert.Equal(t, "actions_variables_read", tool.Name)
 	assert.NotEmpty(t, tool.Description)
 	assert.True(t, tool.Annotations.ReadOnlyHint, "actions_variables_read tool should be read-only")
+	assert.ElementsMatch(t, serverTool.AcceptedScopes, []string{"repo", "read:org", "write:org", "admin:org"})
 
 	t.Run("list repository variables", func(t *testing.T) {
 		client := mustNewGHClient(t, NewMockedHTTPClient(

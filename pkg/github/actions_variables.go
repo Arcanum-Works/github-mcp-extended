@@ -161,7 +161,7 @@ func ActionsVariablesRead(t translations.TranslationHelperFunc) inventory.Server
 				Required: []string{"method", "owner"},
 			}),
 		},
-		[]scopes.Scope{scopes.Repo},
+		[]scopes.Scope{scopes.Repo, scopes.ReadOrg},
 		func(ctx context.Context, deps ToolDependencies, _ *mcp.CallToolRequest, args map[string]any) (*mcp.CallToolResult, any, error) {
 			method, err := RequiredParam[string](args, "method")
 			if err != nil {
