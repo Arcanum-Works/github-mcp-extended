@@ -230,6 +230,9 @@ func AllTools(t translations.TranslationHelperFunc, opts ...ToolOption) []invent
 		ListReleases(t),
 		GetLatestRelease(t),
 		GetReleaseByTag(t),
+		ReleaseWrite(t),
+		TagWrite(t),
+		CompareCommits(t),
 		CreateOrUpdateFile(t),
 		CreateRepository(t),
 		DeleteRepository(t),
@@ -244,6 +247,7 @@ func AllTools(t translations.TranslationHelperFunc, opts ...ToolOption) []invent
 
 		// Git tools
 		GetRepositoryTree(t),
+		GitRefWrite(t),
 
 		// Issue tools
 		IssueRead(t),
@@ -257,6 +261,8 @@ func AllTools(t translations.TranslationHelperFunc, opts ...ToolOption) []invent
 		IssueDependencyRead(t),
 		IssueDependencyWrite(t),
 		FindDuplicate(t),
+		ListMilestones(t),
+		MilestoneWrite(t),
 
 		// User tools
 		SearchUsers(t),
@@ -318,6 +324,8 @@ func AllTools(t translations.TranslationHelperFunc, opts ...ToolOption) []invent
 		ActionsGet(t),
 		ActionsRunTrigger(t),
 		ActionsGetJobLogs(t),
+		ChecksRead(t),
+		CommitStatusWrite(t),
 
 		// Security advisories tools
 		ListGlobalSecurityAdvisories(t),

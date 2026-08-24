@@ -53,6 +53,13 @@ type ServerConfig struct {
 	// This is used to restore the original path when a proxy strips a base path before forwarding.
 	ResourcePath string
 
+	// AuthorizationServer overrides the authorization server URL advertised in the
+	// OAuth Protected Resource Metadata (/.well-known/oauth-protected-resource).
+	// When set, this URL is used instead of the one derived from the GitHub host.
+	// Useful when deploying behind an OAuth proxy (e.g. for GHES, which does not
+	// natively support RFC 8414 / RFC 7591 / PKCE).
+	AuthorizationServer string
+
 	// TrustProxyHeaders indicates whether X-Forwarded-Host and X-Forwarded-Proto
 	// should be honored when constructing OAuth resource metadata URLs. Only
 	// enable this when the server is deployed behind a trusted proxy that sets
@@ -190,11 +197,7 @@ func RunHTTPServer(cfg ServerConfig) error {
 	}
 
 	// Register OAuth protected resource metadata endpoints
-	oauthCfg := &oauth.Config{
-		BaseURL:           cfg.BaseURL,
-		ResourcePath:      cfg.ResourcePath,
-		TrustProxyHeaders: cfg.TrustProxyHeaders,
-	}
+	oauthCfg := newOAuthConfig(cfg)
 
 	serverOptions := []HandlerOption{
 		WithInventoryFactory(inventoryFactory),
@@ -254,6 +257,15 @@ func RunHTTPServer(cfg ServerConfig) error {
 
 	logger.Info("server stopped gracefully")
 	return nil
+}
+
+func newOAuthConfig(cfg ServerConfig) *oauth.Config {
+	return &oauth.Config{
+		BaseURL:             cfg.BaseURL,
+		ResourcePath:        cfg.ResourcePath,
+		TrustProxyHeaders:   cfg.TrustProxyHeaders,
+		AuthorizationServer: cfg.AuthorizationServer,
+	}
 }
 
 // resolveListenAddress returns the address string passed to http.Server.

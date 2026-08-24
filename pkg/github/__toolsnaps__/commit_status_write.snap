@@ -1,0 +1,55 @@
+{
+  "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": false,
+    "readOnlyHint": false,
+    "title": "Post a commit status"
+  },
+  "description": "Post a commit status against a commit, branch or tag. Statuses are additive: posting a new status for an existing context supersedes the previous one rather than replacing it, and there is no way to delete one.",
+  "inputSchema": {
+    "properties": {
+      "context": {
+        "description": "Label that distinguishes this status from other systems' statuses (e.g. 'ci/lint'). Defaults to 'default'.",
+        "type": "string"
+      },
+      "description": {
+        "description": "Short human-readable summary of the status.",
+        "type": "string"
+      },
+      "owner": {
+        "description": "Repository owner (username or organization name)",
+        "type": "string"
+      },
+      "ref": {
+        "description": "Commit SHA, branch name or tag name to attach the status to.",
+        "type": "string"
+      },
+      "repo": {
+        "description": "Repository name",
+        "type": "string"
+      },
+      "state": {
+        "description": "The status state.",
+        "enum": [
+          "error",
+          "failure",
+          "pending",
+          "success"
+        ],
+        "type": "string"
+      },
+      "target_url": {
+        "description": "URL the status links to from the GitHub UI, e.g. the build output.",
+        "type": "string"
+      }
+    },
+    "required": [
+      "owner",
+      "repo",
+      "ref",
+      "state"
+    ],
+    "type": "object"
+  },
+  "name": "commit_status_write"
+}

@@ -1,0 +1,61 @@
+{
+  "annotations": {
+    "destructiveHint": true,
+    "idempotentHint": false,
+    "readOnlyHint": false,
+    "title": "Write operations on milestones"
+  },
+  "description": "Create, update or delete a milestone in a GitHub repository. To assign an issue to a milestone, use the 'issue_write' tool instead.",
+  "inputSchema": {
+    "properties": {
+      "description": {
+        "description": "Milestone description. On 'update', pass an empty string to clear it; omit it to leave the current description unchanged.",
+        "type": "string"
+      },
+      "due_on": {
+        "description": "Due date as YYYY-MM-DD. Interpreted as the end of that day in UTC. On 'update', pass an empty string to clear the due date; omit it to leave the current one unchanged.",
+        "type": "string"
+      },
+      "method": {
+        "description": "Operation to perform: 'create', 'update', or 'delete'",
+        "enum": [
+          "create",
+          "update",
+          "delete"
+        ],
+        "type": "string"
+      },
+      "milestone_number": {
+        "description": "Milestone number. Identifies the milestone for 'update' and 'delete'; takes precedence over title.",
+        "type": "number"
+      },
+      "owner": {
+        "description": "Repository owner (username or organization name)",
+        "type": "string"
+      },
+      "repo": {
+        "description": "Repository name",
+        "type": "string"
+      },
+      "state": {
+        "description": "Milestone state.",
+        "enum": [
+          "open",
+          "closed"
+        ],
+        "type": "string"
+      },
+      "title": {
+        "description": "Milestone title. Required for 'create'. For 'update' and 'delete' it identifies the milestone when milestone_number is not given; for 'update' it also renames the milestone when milestone_number is given.",
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "owner",
+      "repo"
+    ],
+    "type": "object"
+  },
+  "name": "milestone_write"
+}
