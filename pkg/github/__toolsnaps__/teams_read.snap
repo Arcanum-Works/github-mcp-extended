@@ -1,0 +1,51 @@
+{
+  "annotations": {
+    "idempotentHint": false,
+    "readOnlyHint": true,
+    "title": "Read teams"
+  },
+  "description": "Read team information: list an organization's teams, get one team's details, look up a user's membership in a team, or list the repositories a team can access.",
+  "inputSchema": {
+    "properties": {
+      "method": {
+        "description": "The method to execute:\n- list_teams: all teams in the organization\n- get_team: one team's details by slug\n- get_membership: a user's role and status on a team\n- list_repos: repositories the team can access",
+        "enum": [
+          "list_teams",
+          "get_team",
+          "get_membership",
+          "list_repos"
+        ],
+        "type": "string"
+      },
+      "org": {
+        "description": "Organization login that contains the team.",
+        "type": "string"
+      },
+      "page": {
+        "description": "Page number for pagination (min 1)",
+        "minimum": 1,
+        "type": "number"
+      },
+      "perPage": {
+        "description": "Results per page for pagination (min 1, max 100)",
+        "maximum": 100,
+        "minimum": 1,
+        "type": "number"
+      },
+      "team_slug": {
+        "description": "Team slug as it appears in the team's URL. Required for all methods except 'list_teams'.",
+        "type": "string"
+      },
+      "username": {
+        "description": "GitHub login. Required for 'get_membership'.",
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "org"
+    ],
+    "type": "object"
+  },
+  "name": "teams_read"
+}

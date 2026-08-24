@@ -390,6 +390,14 @@ func AllTools(t translations.TranslationHelperFunc, opts ...ToolOption) []invent
 		CollaboratorsRead(t),
 		CollaboratorWrite(t),
 		MergePolicyRead(t),
+		WebhooksRead(t),
+		WebhookWrite(t),
+
+		// Organization and team governance tools
+		TeamsRead(t),
+		TeamWrite(t),
+		OrgMembersRead(t),
+		OrgMemberWrite(t),
 
 		// Label tools
 		GetLabel(t),

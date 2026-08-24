@@ -1,0 +1,54 @@
+{
+  "annotations": {
+    "idempotentHint": false,
+    "readOnlyHint": true,
+    "title": "Read organization members"
+  },
+  "description": "Read organization membership: list members, or get one user's role and status.",
+  "inputSchema": {
+    "properties": {
+      "method": {
+        "description": "The method to execute:\n- list_members: users who belong to the organization\n- get_membership: one user's role and status",
+        "enum": [
+          "list_members",
+          "get_membership"
+        ],
+        "type": "string"
+      },
+      "org": {
+        "description": "Organization login.",
+        "type": "string"
+      },
+      "page": {
+        "description": "Page number for pagination (min 1)",
+        "minimum": 1,
+        "type": "number"
+      },
+      "perPage": {
+        "description": "Results per page for pagination (min 1, max 100)",
+        "maximum": 100,
+        "minimum": 1,
+        "type": "number"
+      },
+      "role": {
+        "description": "Only list members holding this role. Used by 'list_members'. Defaults to 'all'.",
+        "enum": [
+          "all",
+          "admin",
+          "member"
+        ],
+        "type": "string"
+      },
+      "username": {
+        "description": "GitHub login. Required for 'get_membership'.",
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "org"
+    ],
+    "type": "object"
+  },
+  "name": "org_members_read"
+}

@@ -16,6 +16,12 @@ bin/
 # macOS
 .DS_Store
 
+# Local environment / secrets
+.env
+.env.*
+!.env.example
+!.env.sample
+
 # binary
 /github-mcp-server
 /mcpcurl

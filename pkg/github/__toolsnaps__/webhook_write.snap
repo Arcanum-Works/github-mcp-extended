@@ -1,0 +1,82 @@
+{
+  "annotations": {
+    "destructiveHint": true,
+    "idempotentHint": false,
+    "readOnlyHint": false,
+    "title": "Manage webhooks"
+  },
+  "description": "Create, update or delete a repository webhook, send it a ping, or redeliver a past delivery. The secret, if set, is write-only: it is sent to GitHub but never returned or logged by this tool.",
+  "inputSchema": {
+    "properties": {
+      "active": {
+        "description": "Whether the webhook is active. Defaults to true on create.",
+        "type": "boolean"
+      },
+      "content_type": {
+        "description": "Payload format. Defaults to 'form'.",
+        "enum": [
+          "json",
+          "form"
+        ],
+        "type": "string"
+      },
+      "delivery_id": {
+        "description": "Delivery ID. Required for 'redeliver'.",
+        "type": "integer"
+      },
+      "events": {
+        "description": "GitHub event names that trigger this webhook, e.g. 'push', 'pull_request'. Defaults to ['push'] on create.",
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "hook_id": {
+        "description": "Webhook ID. Required for all methods except 'create'.",
+        "type": "integer"
+      },
+      "insecure_ssl": {
+        "description": "'0' to verify SSL certs (default), '1' to skip verification.",
+        "enum": [
+          "0",
+          "1"
+        ],
+        "type": "string"
+      },
+      "method": {
+        "description": "The operation to perform:\n- create: create a new webhook\n- update: change an existing webhook's URL, secret, content type, SSL verification, events or active state\n- delete: permanently remove a webhook\n- ping: send a ping event to test delivery\n- redeliver: resend a past delivery",
+        "enum": [
+          "create",
+          "update",
+          "delete",
+          "ping",
+          "redeliver"
+        ],
+        "type": "string"
+      },
+      "owner": {
+        "description": "Repository owner (username or organization name)",
+        "type": "string"
+      },
+      "repo": {
+        "description": "Repository name",
+        "type": "string"
+      },
+      "secret": {
+        "description": "Shared secret GitHub uses to sign payloads. Optional. Never returned by any read tool once set.",
+        "type": "string"
+      },
+      "url": {
+        "description": "Payload delivery URL. Required for 'create'; optional for 'update'.",
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "owner",
+      "repo"
+    ],
+    "type": "object"
+  },
+  "name": "webhook_write"
+}

@@ -1,0 +1,66 @@
+{
+  "annotations": {
+    "destructiveHint": true,
+    "idempotentHint": false,
+    "readOnlyHint": false,
+    "title": "Manage teams"
+  },
+  "description": "Create, update or delete a team, or manage its membership. Use collaborator_write's set_team/remove_team methods to grant or revoke a team's access to a repository.",
+  "inputSchema": {
+    "properties": {
+      "description": {
+        "description": "Team description. Used by 'create_team' and 'update_team'.",
+        "type": "string"
+      },
+      "method": {
+        "description": "The operation to perform:\n- create_team: create a new team\n- update_team: change a team's name, description or privacy\n- delete_team: permanently delete a team\n- add_member: add a user to a team, or change their role\n- remove_member: remove a user from a team",
+        "enum": [
+          "create_team",
+          "update_team",
+          "delete_team",
+          "add_member",
+          "remove_member"
+        ],
+        "type": "string"
+      },
+      "name": {
+        "description": "Team name. Required for 'create_team'; optional for 'update_team'.",
+        "type": "string"
+      },
+      "org": {
+        "description": "Organization login that contains the team.",
+        "type": "string"
+      },
+      "privacy": {
+        "description": "'secret' (visible only to org owners and team members) or 'closed' (visible to the whole org). Used by 'create_team' and 'update_team'.",
+        "enum": [
+          "secret",
+          "closed"
+        ],
+        "type": "string"
+      },
+      "role": {
+        "description": "Role to grant a team member. Used by 'add_member'. Defaults to 'member'.",
+        "enum": [
+          "member",
+          "maintainer"
+        ],
+        "type": "string"
+      },
+      "team_slug": {
+        "description": "Team slug. Required for all methods except 'create_team'.",
+        "type": "string"
+      },
+      "username": {
+        "description": "GitHub login. Required for 'add_member' and 'remove_member'.",
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "org"
+    ],
+    "type": "object"
+  },
+  "name": "team_write"
+}
