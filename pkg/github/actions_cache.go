@@ -27,10 +27,12 @@ const (
 
 // MinimalActionsCache is the trimmed output type for an Actions cache entry.
 type MinimalActionsCache struct {
-	ID             int64  `json:"id"`
-	Key            string `json:"key,omitempty"`
-	Ref            string `json:"ref,omitempty"`
-	SizeInBytes    int64  `json:"size_in_bytes,omitempty"`
+	ID   int64  `json:"id"`
+	Key  string `json:"key,omitempty"`
+	Ref  string `json:"ref,omitempty"`
+	// SizeInBytes has no omitempty: a 0-byte cache is unusual but real, and
+	// omitting it would make it indistinguishable from an absent field.
+	SizeInBytes    int64  `json:"size_in_bytes"`
 	LastAccessedAt string `json:"last_accessed_at,omitempty"`
 }
 
@@ -111,6 +113,9 @@ func ActionsCacheRead(t translations.TranslationHelperFunc) inventory.ServerTool
 				return utils.NewToolResultError(err.Error()), nil, nil
 			}
 			method = strings.ToLower(method)
+			if method != cacheMethodList && method != cacheMethodUsage {
+				return utils.NewToolResultError(fmt.Sprintf("unknown method: %s. Supported methods are: list, usage", method)), nil, nil
+			}
 
 			owner, err := RequiredParam[string](args, "owner")
 			if err != nil {
@@ -169,10 +174,10 @@ func ActionsCacheRead(t translations.TranslationHelperFunc) inventory.ServerTool
 				}
 				defer func() { _ = resp.Body.Close() }()
 				return marshalGovernanceResult(convertToMinimalActionsCacheUsage(usage), nil)
-
-			default:
-				return utils.NewToolResultError(fmt.Sprintf("unknown method: %s. Supported methods are: list, usage", method)), nil, nil
 			}
+
+			// Unreachable: method was validated above.
+			return utils.NewToolResultError(fmt.Sprintf("unknown method: %s", method)), nil, nil
 		},
 	)
 }
@@ -230,6 +235,9 @@ func ActionsCacheWrite(t translations.TranslationHelperFunc) inventory.ServerToo
 				return utils.NewToolResultError(err.Error()), nil, nil
 			}
 			method = strings.ToLower(method)
+			if method != cacheWriteMethodDeleteByID && method != cacheWriteMethodDeleteByKey {
+				return utils.NewToolResultError(fmt.Sprintf("unknown method: %s. Supported methods are: delete_by_id, delete_by_key", method)), nil, nil
+			}
 
 			owner, err := RequiredParam[string](args, "owner")
 			if err != nil {
@@ -245,8 +253,7 @@ func ActionsCacheWrite(t translations.TranslationHelperFunc) inventory.ServerToo
 				return nil, nil, fmt.Errorf("failed to get GitHub client: %w", err)
 			}
 
-			switch method {
-			case cacheWriteMethodDeleteByID:
+			if method == cacheWriteMethodDeleteByID {
 				cacheID, err := RequiredInt(args, "cache_id")
 				if err != nil {
 					return utils.NewToolResultError(err.Error()), nil, nil
@@ -257,30 +264,26 @@ func ActionsCacheWrite(t translations.TranslationHelperFunc) inventory.ServerToo
 				}
 				defer func() { _ = resp.Body.Close() }()
 				return marshalGovernanceResult(map[string]any{"result": "cache_deleted", "cache_id": cacheID}, nil)
-
-			case cacheWriteMethodDeleteByKey:
-				key, err := RequiredParam[string](args, "key")
-				if err != nil {
-					return utils.NewToolResultError(err.Error()), nil, nil
-				}
-				ref, err := OptionalParam[string](args, "ref")
-				if err != nil {
-					return utils.NewToolResultError(err.Error()), nil, nil
-				}
-				var refPtr *string
-				if ref != "" {
-					refPtr = &ref
-				}
-				resp, err := client.Actions.DeleteCachesByKey(ctx, owner, repo, key, refPtr)
-				if err != nil {
-					return ghErrors.NewGitHubAPIErrorResponse(ctx, fmt.Sprintf("failed to delete caches with key '%s'", key), resp, err), nil, nil
-				}
-				defer func() { _ = resp.Body.Close() }()
-				return marshalGovernanceResult(map[string]any{"result": "cache_deleted", "key": key}, nil)
-
-			default:
-				return utils.NewToolResultError(fmt.Sprintf("unknown method: %s. Supported methods are: delete_by_id, delete_by_key", method)), nil, nil
 			}
+
+			key, err := RequiredParam[string](args, "key")
+			if err != nil {
+				return utils.NewToolResultError(err.Error()), nil, nil
+			}
+			ref, err := OptionalParam[string](args, "ref")
+			if err != nil {
+				return utils.NewToolResultError(err.Error()), nil, nil
+			}
+			var refPtr *string
+			if ref != "" {
+				refPtr = &ref
+			}
+			resp, err := client.Actions.DeleteCachesByKey(ctx, owner, repo, key, refPtr)
+			if err != nil {
+				return ghErrors.NewGitHubAPIErrorResponse(ctx, fmt.Sprintf("failed to delete caches with key '%s'", key), resp, err), nil, nil
+			}
+			defer func() { _ = resp.Body.Close() }()
+			return marshalGovernanceResult(map[string]any{"result": "cache_deleted", "key": key}, nil)
 		},
 	)
 }

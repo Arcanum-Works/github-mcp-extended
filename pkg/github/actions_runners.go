@@ -138,6 +138,9 @@ func ActionsRunnersRead(t translations.TranslationHelperFunc) inventory.ServerTo
 				return utils.NewToolResultError(err.Error()), nil, nil
 			}
 			method = strings.ToLower(method)
+			if method != runnersMethodList && method != runnersMethodGet {
+				return utils.NewToolResultError(fmt.Sprintf("unknown method: %s. Supported methods are: list, get", method)), nil, nil
+			}
 
 			isOrg, org, owner, repo, errResult := resolveRunnerScope(args)
 			if errResult != nil {
@@ -153,51 +156,40 @@ func ActionsRunnersRead(t translations.TranslationHelperFunc) inventory.ServerTo
 				return nil, nil, fmt.Errorf("failed to get GitHub client: %w", err)
 			}
 
-			switch method {
-			case runnersMethodList:
+			if method == runnersMethodList {
 				listOpts := &github.ListRunnersOptions{ListOptions: github.ListOptions{Page: pagination.Page, PerPage: pagination.PerPage}}
 
+				var runners *github.Runners
+				var resp *github.Response
 				if isOrg {
-					runners, resp, err := client.Actions.ListOrganizationRunners(ctx, org, listOpts)
-					if err != nil {
-						return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to list organization runners", resp, err), nil, nil
-					}
-					defer func() { _ = resp.Body.Close() }()
-					return marshalGovernanceResult(minimalRunners(runners.Runners), nil)
+					runners, resp, err = client.Actions.ListOrganizationRunners(ctx, org, listOpts)
+				} else {
+					runners, resp, err = client.Actions.ListRunners(ctx, owner, repo, listOpts)
 				}
-
-				runners, resp, err := client.Actions.ListRunners(ctx, owner, repo, listOpts)
 				if err != nil {
-					return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to list repository runners", resp, err), nil, nil
+					return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to list runners", resp, err), nil, nil
 				}
 				defer func() { _ = resp.Body.Close() }()
 				return marshalGovernanceResult(minimalRunners(runners.Runners), nil)
-
-			case runnersMethodGet:
-				runnerID, err := RequiredInt(args, "runner_id")
-				if err != nil {
-					return utils.NewToolResultError(err.Error()), nil, nil
-				}
-
-				if isOrg {
-					runner, resp, err := client.Actions.GetOrganizationRunner(ctx, org, int64(runnerID))
-					if err != nil {
-						return ghErrors.NewGitHubAPIErrorResponse(ctx, fmt.Sprintf("failed to get organization runner %d", runnerID), resp, err), nil, nil
-					}
-					defer func() { _ = resp.Body.Close() }()
-					return marshalGovernanceResult(convertToMinimalRunner(runner), nil)
-				}
-
-				runner, resp, err := client.Actions.GetRunner(ctx, owner, repo, int64(runnerID))
-				if err != nil {
-					return ghErrors.NewGitHubAPIErrorResponse(ctx, fmt.Sprintf("failed to get runner %d", runnerID), resp, err), nil, nil
-				}
-				defer func() { _ = resp.Body.Close() }()
-				return marshalGovernanceResult(convertToMinimalRunner(runner), nil)
-
-			default:
-				return utils.NewToolResultError(fmt.Sprintf("unknown method: %s. Supported methods are: list, get", method)), nil, nil
 			}
+
+			runnerID, err := RequiredInt(args, "runner_id")
+			if err != nil {
+				return utils.NewToolResultError(err.Error()), nil, nil
+			}
+
+			var runner *github.Runner
+			var resp *github.Response
+			if isOrg {
+				runner, resp, err = client.Actions.GetOrganizationRunner(ctx, org, int64(runnerID))
+			} else {
+				runner, resp, err = client.Actions.GetRunner(ctx, owner, repo, int64(runnerID))
+			}
+			if err != nil {
+				return ghErrors.NewGitHubAPIErrorResponse(ctx, fmt.Sprintf("failed to get runner %d", runnerID), resp, err), nil, nil
+			}
+			defer func() { _ = resp.Body.Close() }()
+			return marshalGovernanceResult(convertToMinimalRunner(runner), nil)
 		},
 	)
 }
@@ -283,16 +275,12 @@ func ActionsRunnerWrite(t translations.TranslationHelperFunc) inventory.ServerTo
 				return nil, nil, fmt.Errorf("failed to get GitHub client: %w", err)
 			}
 
+			var resp *github.Response
 			if isOrg {
-				resp, err := client.Actions.RemoveOrganizationRunner(ctx, org, int64(runnerID))
-				if err != nil {
-					return ghErrors.NewGitHubAPIErrorResponse(ctx, fmt.Sprintf("failed to remove organization runner %d", runnerID), resp, err), nil, nil
-				}
-				defer func() { _ = resp.Body.Close() }()
-				return marshalGovernanceResult(map[string]any{"result": "runner_removed", "runner_id": runnerID}, nil)
+				resp, err = client.Actions.RemoveOrganizationRunner(ctx, org, int64(runnerID))
+			} else {
+				resp, err = client.Actions.RemoveRunner(ctx, owner, repo, int64(runnerID))
 			}
-
-			resp, err := client.Actions.RemoveRunner(ctx, owner, repo, int64(runnerID))
 			if err != nil {
 				return ghErrors.NewGitHubAPIErrorResponse(ctx, fmt.Sprintf("failed to remove runner %d", runnerID), resp, err), nil, nil
 			}

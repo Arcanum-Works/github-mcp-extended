@@ -29,6 +29,7 @@ func Test_ActionsCacheRead(t *testing.T) {
 
 	assert.Equal(t, "actions_cache_read", tool.Name)
 	assert.True(t, tool.Annotations.ReadOnlyHint)
+	assert.ElementsMatch(t, serverTool.AcceptedScopes, []string{"repo"})
 
 	t.Run("list", func(t *testing.T) {
 		client := mustNewGHClient(t, NewMockedHTTPClient(
@@ -65,9 +66,10 @@ func Test_ActionsCacheRead(t *testing.T) {
 		require.NoError(t, err)
 		require.False(t, result.IsError, "unexpected tool error: %v", result.Content)
 
-		var usage github.ActionsCacheUsage
+		var usage MinimalActionsCacheUsage
 		require.NoError(t, json.Unmarshal([]byte(getTextResult(t, result).Text), &usage))
 		assert.Equal(t, 3, usage.ActiveCachesCount)
+		assert.Equal(t, int64(2048), usage.ActiveCachesBytes)
 	})
 
 	t.Run("unknown method", func(t *testing.T) {
@@ -91,6 +93,7 @@ func Test_ActionsCacheWrite(t *testing.T) {
 
 	assert.Equal(t, "actions_cache_write", tool.Name)
 	assert.False(t, tool.Annotations.ReadOnlyHint)
+	assert.ElementsMatch(t, serverTool.AcceptedScopes, []string{"repo"})
 
 	t.Run("delete_by_id", func(t *testing.T) {
 		client := mustNewGHClient(t, NewMockedHTTPClient(

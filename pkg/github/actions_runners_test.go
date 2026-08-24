@@ -31,6 +31,7 @@ func Test_ActionsRunnersRead(t *testing.T) {
 
 	assert.Equal(t, "actions_runners_read", tool.Name)
 	assert.True(t, tool.Annotations.ReadOnlyHint)
+	assert.ElementsMatch(t, serverTool.AcceptedScopes, []string{"repo", "read:org", "write:org", "admin:org"})
 
 	t.Run("list defaults to repository scope", func(t *testing.T) {
 		client := mustNewGHClient(t, NewMockedHTTPClient(
@@ -121,7 +122,7 @@ func Test_ActionsRunnersRead(t *testing.T) {
 		deps := BaseDeps{Client: client}
 		handler := serverTool.Handler(deps)
 
-		request := createMCPRequest(map[string]any{"method": "nope", "owner": "owner", "repo": "repo"})
+		request := createMCPRequest(map[string]any{"method": "nope"})
 		result, err := handler(ContextWithDeps(context.Background(), deps), &request)
 		require.NoError(t, err)
 		assert.Contains(t, getErrorResult(t, result).Text, "unknown method")
@@ -165,6 +166,7 @@ func Test_ActionsRunnerWrite(t *testing.T) {
 
 	assert.Equal(t, "actions_runner_write", tool.Name)
 	assert.False(t, tool.Annotations.ReadOnlyHint)
+	assert.ElementsMatch(t, serverTool.AcceptedScopes, []string{"repo", "write:org", "admin:org"})
 
 	t.Run("remove repository runner", func(t *testing.T) {
 		client := mustNewGHClient(t, NewMockedHTTPClient(
