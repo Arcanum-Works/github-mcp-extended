@@ -1,0 +1,44 @@
+{
+  "annotations": {
+    "destructiveHint": true,
+    "idempotentHint": false,
+    "readOnlyHint": false,
+    "title": "Manage organization members"
+  },
+  "description": "Change an organization member's role, or remove them from the organization. Removal revokes access to every repository and team in the organization.",
+  "inputSchema": {
+    "properties": {
+      "method": {
+        "description": "The operation to perform:\n- update_membership: change a member's role\n- remove_member: remove a user from the organization entirely",
+        "enum": [
+          "update_membership",
+          "remove_member"
+        ],
+        "type": "string"
+      },
+      "org": {
+        "description": "Organization login.",
+        "type": "string"
+      },
+      "role": {
+        "description": "Role to grant. Required for 'update_membership'.",
+        "enum": [
+          "member",
+          "admin"
+        ],
+        "type": "string"
+      },
+      "username": {
+        "description": "GitHub login.",
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "org",
+      "username"
+    ],
+    "type": "object"
+  },
+  "name": "org_member_write"
+}

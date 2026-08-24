@@ -1272,6 +1272,28 @@ The following sets of tools are available:
 
 <summary><picture><source media="(prefers-color-scheme: dark)" srcset="pkg/octicons/icons/organization-dark.png"><source media="(prefers-color-scheme: light)" srcset="pkg/octicons/icons/organization-light.png"><img src="pkg/octicons/icons/organization-light.png" width="20" height="20" alt="organization"></picture> Organizations</summary>
 
+- **org_member_write** - Manage organization members
+  - **Required OAuth Scopes**: `write:org`
+  - **Accepted OAuth Scopes**: `admin:org`, `write:org`
+  - `method`: The operation to perform:
+    - update_membership: change a member's role
+    - remove_member: remove a user from the organization entirely (string, required)
+  - `org`: Organization login. (string, required)
+  - `role`: Role to grant. Required for 'update_membership'. (string, optional)
+  - `username`: GitHub login. (string, required)
+
+- **org_members_read** - Read organization members
+  - **Required OAuth Scopes**: `read:org`
+  - **Accepted OAuth Scopes**: `admin:org`, `read:org`, `write:org`
+  - `method`: The method to execute:
+    - list_members: users who belong to the organization
+    - get_membership: one user's role and status (string, required)
+  - `org`: Organization login. (string, required)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
+  - `role`: Only list members holding this role. Used by 'list_members'. Defaults to 'all'. (string, optional)
+  - `username`: GitHub login. Required for 'get_membership'. (string, optional)
+
 - **search_orgs** - Search organizations
   - **Required OAuth Scopes**: `read:org`
   - **Accepted OAuth Scopes**: `admin:org`, `read:org`, `write:org`
@@ -1280,6 +1302,37 @@ The following sets of tools are available:
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `query`: Organization search query. Examples: 'microsoft', 'location:california', 'created:>=2025-01-01'. Search is automatically scoped to type:org. (string, required)
   - `sort`: Sort field by category (string, optional)
+
+- **team_write** - Manage teams
+  - **Required OAuth Scopes**: `write:org`
+  - **Accepted OAuth Scopes**: `admin:org`, `write:org`
+  - `description`: Team description. Used by 'create_team' and 'update_team'. (string, optional)
+  - `method`: The operation to perform:
+    - create_team: create a new team
+    - update_team: change a team's name, description or privacy
+    - delete_team: permanently delete a team
+    - add_member: add a user to a team, or change their role
+    - remove_member: remove a user from a team (string, required)
+  - `name`: Team name. Required for 'create_team'; optional for 'update_team'. (string, optional)
+  - `org`: Organization login that contains the team. (string, required)
+  - `privacy`: 'secret' (visible only to org owners and team members) or 'closed' (visible to the whole org). Used by 'create_team' and 'update_team'. (string, optional)
+  - `role`: Role to grant a team member. Used by 'add_member'. Defaults to 'member'. (string, optional)
+  - `team_slug`: Team slug. Required for all methods except 'create_team'. (string, optional)
+  - `username`: GitHub login. Required for 'add_member' and 'remove_member'. (string, optional)
+
+- **teams_read** - Read teams
+  - **Required OAuth Scopes**: `read:org`
+  - **Accepted OAuth Scopes**: `admin:org`, `read:org`, `write:org`
+  - `method`: The method to execute:
+    - list_teams: all teams in the organization
+    - get_team: one team's details by slug
+    - get_membership: a user's role and status on a team
+    - list_repos: repositories the team can access (string, required)
+  - `org`: Organization login that contains the team. (string, required)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
+  - `team_slug`: Team slug as it appears in the team's URL. Required for all methods except 'list_teams'. (string, optional)
+  - `username`: GitHub login. Required for 'get_membership'. (string, optional)
 
 </details>
 
@@ -1568,6 +1621,40 @@ The following sets of tools are available:
   - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
   - `repo`: Repository name (string, required)
   - `ruleset_id`: Numeric ruleset ID. Identifies the ruleset for 'get_ruleset'; takes precedence over name. (number, optional)
+
+- **webhook_write** - Manage webhooks
+  - **Required OAuth Scopes**: `repo`
+  - `active`: Whether the webhook is active. Defaults to true on create. (boolean, optional)
+  - `content_type`: Payload format. Defaults to 'form'. (string, optional)
+  - `delivery_id`: Delivery ID. Required for 'redeliver'. (integer, optional)
+  - `events`: GitHub event names that trigger this webhook, e.g. 'push', 'pull_request'. Defaults to ['push'] on create. (string[], optional)
+  - `hook_id`: Webhook ID. Required for all methods except 'create'. (integer, optional)
+  - `insecure_ssl`: '0' to verify SSL certs (default), '1' to skip verification. (string, optional)
+  - `method`: The operation to perform:
+    - create: create a new webhook
+    - update: change an existing webhook's URL, secret, content type, SSL verification, events or active state
+    - delete: permanently remove a webhook
+    - ping: send a ping event to test delivery
+    - redeliver: resend a past delivery (string, required)
+  - `owner`: Repository owner (username or organization name) (string, required)
+  - `repo`: Repository name (string, required)
+  - `secret`: Shared secret GitHub uses to sign payloads. Optional. Never returned by any read tool once set. (string, optional)
+  - `url`: Payload delivery URL. Required for 'create'; optional for 'update'. (string, optional)
+
+- **webhooks_read** - Read webhooks
+  - **Required OAuth Scopes**: `repo`
+  - `delivery_id`: Delivery ID. Required for 'get_delivery'. (integer, optional)
+  - `hook_id`: Webhook ID. Required for all methods except 'list'. (integer, optional)
+  - `method`: The method to execute:
+    - list: all webhooks configured on the repository
+    - get: one webhook's details
+    - get_config: one webhook's delivery config (URL, content type, SSL verification)
+    - list_deliveries: recent delivery attempts for a webhook
+    - get_delivery: one delivery's status (string, required)
+  - `owner`: Repository owner (username or organization name) (string, required)
+  - `page`: Page number for pagination (min 1) (number, optional)
+  - `perPage`: Results per page for pagination (min 1, max 100) (number, optional)
+  - `repo`: Repository name (string, required)
 
 </details>
 

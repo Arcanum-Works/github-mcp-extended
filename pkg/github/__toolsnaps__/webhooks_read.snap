@@ -1,0 +1,57 @@
+{
+  "annotations": {
+    "idempotentHint": false,
+    "readOnlyHint": true,
+    "title": "Read webhooks"
+  },
+  "description": "Read a repository's webhooks: list them, get one's details or delivery config, or inspect its delivery history. The config secret is never returned by the GitHub API and is never included in the result.",
+  "inputSchema": {
+    "properties": {
+      "delivery_id": {
+        "description": "Delivery ID. Required for 'get_delivery'.",
+        "type": "integer"
+      },
+      "hook_id": {
+        "description": "Webhook ID. Required for all methods except 'list'.",
+        "type": "integer"
+      },
+      "method": {
+        "description": "The method to execute:\n- list: all webhooks configured on the repository\n- get: one webhook's details\n- get_config: one webhook's delivery config (URL, content type, SSL verification)\n- list_deliveries: recent delivery attempts for a webhook\n- get_delivery: one delivery's status",
+        "enum": [
+          "list",
+          "get",
+          "get_config",
+          "list_deliveries",
+          "get_delivery"
+        ],
+        "type": "string"
+      },
+      "owner": {
+        "description": "Repository owner (username or organization name)",
+        "type": "string"
+      },
+      "page": {
+        "description": "Page number for pagination (min 1)",
+        "minimum": 1,
+        "type": "number"
+      },
+      "perPage": {
+        "description": "Results per page for pagination (min 1, max 100)",
+        "maximum": 100,
+        "minimum": 1,
+        "type": "number"
+      },
+      "repo": {
+        "description": "Repository name",
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "owner",
+      "repo"
+    ],
+    "type": "object"
+  },
+  "name": "webhooks_read"
+}
