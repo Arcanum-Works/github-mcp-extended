@@ -1,0 +1,98 @@
+{
+  "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": false,
+    "readOnlyHint": false,
+    "title": "Create or update a check run"
+  },
+  "description": "Create or update a check run against a commit, to publish verification state that gates a merge. Requires a GitHub App installation token: a personal access token can read check runs but not write them. To post CI state with a personal access token, use commit_status_write instead.",
+  "inputSchema": {
+    "properties": {
+      "check_run_id": {
+        "description": "Numeric check run ID. Required for 'update_check_run'.",
+        "type": "number"
+      },
+      "completed_at": {
+        "description": "When the check run finished, as an RFC3339 timestamp. Only meaningful once the run is completed.",
+        "type": "string"
+      },
+      "conclusion": {
+        "description": "Final result of the check run. Required when status is 'completed', and setting it implies completion.",
+        "enum": [
+          "action_required",
+          "cancelled",
+          "failure",
+          "neutral",
+          "skipped",
+          "success",
+          "timed_out"
+        ],
+        "type": "string"
+      },
+      "details_url": {
+        "description": "URL the check run links to from the GitHub UI, e.g. the build output.",
+        "type": "string"
+      },
+      "external_id": {
+        "description": "Caller-defined identifier for the run, echoed back by GitHub.",
+        "type": "string"
+      },
+      "head_sha": {
+        "description": "Commit SHA the check run reports on. Required for 'create_check_run'.",
+        "type": "string"
+      },
+      "method": {
+        "description": "The method to execute:\n- create_check_run: create a new check run for a commit SHA\n- update_check_run: update an existing check run by ID",
+        "enum": [
+          "create_check_run",
+          "update_check_run"
+        ],
+        "type": "string"
+      },
+      "name": {
+        "description": "Name of the check run, e.g. 'arcanum/gate'. Required for 'create_check_run'.",
+        "type": "string"
+      },
+      "output_summary": {
+        "description": "Short summary of the check run output. Supports Markdown.",
+        "type": "string"
+      },
+      "output_text": {
+        "description": "Full detail of the check run output. Supports Markdown.",
+        "type": "string"
+      },
+      "output_title": {
+        "description": "Title of the check run output shown in the GitHub UI.",
+        "type": "string"
+      },
+      "owner": {
+        "description": "Repository owner (username or organization name)",
+        "type": "string"
+      },
+      "repo": {
+        "description": "Repository name",
+        "type": "string"
+      },
+      "started_at": {
+        "description": "When the check run began, as an RFC3339 timestamp (e.g. '2026-08-25T10:00:00Z').",
+        "type": "string"
+      },
+      "status": {
+        "description": "Current state of the check run. Defaults to 'queued' on create.",
+        "enum": [
+          "queued",
+          "in_progress",
+          "completed"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "owner",
+      "repo"
+    ],
+    "type": "object"
+  },
+  "name": "checks_write"
+}

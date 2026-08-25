@@ -684,6 +684,26 @@ The following sets of tools are available:
   - `repo`: Repository name (string, required)
   - `status`: Only return check runs in this status. Used by 'list_check_runs'. (string, optional)
 
+- **checks_write** - Create or update a check run
+  - **Required OAuth Scopes**: `repo`
+  - `check_run_id`: Numeric check run ID. Required for 'update_check_run'. (number, optional)
+  - `completed_at`: When the check run finished, as an RFC3339 timestamp. Only meaningful once the run is completed. (string, optional)
+  - `conclusion`: Final result of the check run. Required when status is 'completed', and setting it implies completion. (string, optional)
+  - `details_url`: URL the check run links to from the GitHub UI, e.g. the build output. (string, optional)
+  - `external_id`: Caller-defined identifier for the run, echoed back by GitHub. (string, optional)
+  - `head_sha`: Commit SHA the check run reports on. Required for 'create_check_run'. (string, optional)
+  - `method`: The method to execute:
+    - create_check_run: create a new check run for a commit SHA
+    - update_check_run: update an existing check run by ID (string, required)
+  - `name`: Name of the check run, e.g. 'arcanum/gate'. Required for 'create_check_run'. (string, optional)
+  - `output_summary`: Short summary of the check run output. Supports Markdown. (string, optional)
+  - `output_text`: Full detail of the check run output. Supports Markdown. (string, optional)
+  - `output_title`: Title of the check run output shown in the GitHub UI. (string, optional)
+  - `owner`: Repository owner (username or organization name) (string, required)
+  - `repo`: Repository name (string, required)
+  - `started_at`: When the check run began, as an RFC3339 timestamp (e.g. '2026-08-25T10:00:00Z'). (string, optional)
+  - `status`: Current state of the check run. Defaults to 'queued' on create. (string, optional)
+
 - **commit_status_write** - Post a commit status
   - **Required OAuth Scopes**: `repo`
   - `context`: Label that distinguishes this status from other systems' statuses (e.g. 'ci/lint'). Defaults to 'default'. (string, optional)
