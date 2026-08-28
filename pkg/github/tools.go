@@ -350,6 +350,7 @@ func AllTools(t translations.TranslationHelperFunc, opts ...ToolOption) []invent
 		ActionsGetJobLogs(t),
 		ChecksRead(t),
 		CommitStatusWrite(t),
+		ChecksWrite(t),
 
 		// Actions configuration tools
 		ActionsVariablesRead(t),
