@@ -3,6 +3,7 @@ package github
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"slices"
 	"strings"
 	"time"
@@ -120,7 +121,7 @@ func ChecksWrite(t translations.TranslationHelperFunc) inventory.ServerTool {
 					},
 					"started_at": {
 						Type:        "string",
-						Description: "When the check run began, as an RFC3339 timestamp (e.g. '2026-08-25T10:00:00Z'). Accepted by 'create_check_run' only — GitHub's update endpoint does not take it, and passing it to 'update_check_run' is rejected rather than silently dropped.",
+						Description: "When the check run began, as an RFC3339 timestamp (e.g. '2026-08-25T10:00:00Z'). Accepted by both methods.",
 					},
 					"completed_at": {
 						Type:        "string",
@@ -285,14 +286,6 @@ func ChecksWrite(t translations.TranslationHelperFunc) inventory.ServerTool {
 				return marshalChecksResult(convertToMinimalCheckRun(run), identityChecksLabel)
 
 			default:
-				// github.UpdateCheckRunOptions has no StartedAt field because
-				// GitHub's PATCH endpoint does not accept one. Accepting the
-				// argument here and dropping it would report success for a
-				// change that never happened.
-				if startedAt != nil {
-					return utils.NewToolResultError("started_at is only accepted by create_check_run; GitHub's update endpoint does not change a run's start time"), nil, nil
-				}
-
 				checkRunID, err := RequiredInt(args, "check_run_id")
 				if err != nil {
 					return utils.NewToolResultError(err.Error()), nil, nil
@@ -302,17 +295,20 @@ func ChecksWrite(t translations.TranslationHelperFunc) inventory.ServerTool {
 					return utils.NewToolResultError(err.Error()), nil, nil
 				}
 
-				opts := github.UpdateCheckRunOptions{
-					Name:        name,
-					Status:      ToStringPtr(status),
-					Conclusion:  ToStringPtr(conclusion),
-					DetailsURL:  ToStringPtr(detailsURL),
-					ExternalID:  ToStringPtr(externalID),
-					CompletedAt: completedAt,
-					Output:      output,
+				body := updateCheckRunRequest{
+					UpdateCheckRunOptions: github.UpdateCheckRunOptions{
+						Name:        name,
+						Status:      ToStringPtr(status),
+						Conclusion:  ToStringPtr(conclusion),
+						DetailsURL:  ToStringPtr(detailsURL),
+						ExternalID:  ToStringPtr(externalID),
+						CompletedAt: completedAt,
+						Output:      output,
+					},
+					StartedAt: startedAt,
 				}
 
-				run, resp, err := client.Checks.UpdateCheckRun(ctx, owner, repo, int64(checkRunID), opts)
+				run, resp, err := updateCheckRun(ctx, client, owner, repo, int64(checkRunID), body)
 				if err != nil {
 					return ghErrors.NewGitHubAPIErrorResponse(ctx, "failed to update check run", resp, err), nil, nil
 				}
@@ -322,6 +318,38 @@ func ChecksWrite(t translations.TranslationHelperFunc) inventory.ServerTool {
 			}
 		},
 	)
+}
+
+// updateCheckRunRequest is github.UpdateCheckRunOptions plus started_at.
+//
+// GitHub's PATCH /repos/{owner}/{repo}/check-runs/{check_run_id} documents
+// started_at as an accepted body parameter, but go-github's
+// UpdateCheckRunOptions has no field for it. That is a client-library gap, not
+// an API constraint, so the option struct is embedded (which flattens in JSON)
+// and the missing field added alongside, rather than dropping the caller's
+// timestamp or refusing it.
+type updateCheckRunRequest struct {
+	github.UpdateCheckRunOptions
+	StartedAt *github.Timestamp `json:"started_at,omitempty"`
+}
+
+// updateCheckRun issues the PATCH that go-github's Checks.UpdateCheckRun would
+// issue, with updateCheckRunRequest as the body.
+func updateCheckRun(ctx context.Context, client *github.Client, owner, repo string, checkRunID int64, body updateCheckRunRequest) (*github.CheckRun, *github.Response, error) {
+	u := fmt.Sprintf("repos/%v/%v/check-runs/%v", owner, repo, checkRunID)
+
+	req, err := client.NewRequest(ctx, http.MethodPatch, u, body)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	run := new(github.CheckRun)
+	resp, err := client.Do(req, run)
+	if err != nil {
+		return nil, resp, err
+	}
+
+	return run, resp, nil
 }
 
 // optionalTimestampParam reads an RFC3339 timestamp argument, rejecting a
@@ -366,6 +394,13 @@ func optionalCheckRunOutput(args map[string]any) (*github.CheckRunOutput, error)
 
 	if title == "" && summary == "" && text == "" && len(annotations) == 0 {
 		return nil, nil
+	}
+
+	// GitHub requires title and summary on the output object itself, so a call
+	// carrying only output_text or only output_annotations is a 422 waiting to
+	// happen. Say so here instead of spending the round trip.
+	if title == "" || summary == "" {
+		return nil, fmt.Errorf("output_title and output_summary are both required whenever any other output field (output_text, output_annotations) is given")
 	}
 
 	return &github.CheckRunOutput{
@@ -429,14 +464,23 @@ func optionalCheckRunAnnotations(args map[string]any) ([]*github.CheckRunAnnotat
 			return nil, fmt.Errorf("output_annotations[%d].end_line (%d) is before start_line (%d)", i, endLine, startLine)
 		}
 
+		annotationTitle, err := optionalAnnotationString(fields, i, "title")
+		if err != nil {
+			return nil, err
+		}
+		rawDetails, err := optionalAnnotationString(fields, i, "raw_details")
+		if err != nil {
+			return nil, err
+		}
+
 		annotation := &github.CheckRunAnnotation{
 			Path:            github.Ptr(path),
 			StartLine:       github.Ptr(startLine),
 			EndLine:         github.Ptr(endLine),
 			AnnotationLevel: github.Ptr(level),
 			Message:         github.Ptr(message),
-			Title:           ToStringPtr(stringField(fields, "title")),
-			RawDetails:      ToStringPtr(stringField(fields, "raw_details")),
+			Title:           ToStringPtr(annotationTitle),
+			RawDetails:      ToStringPtr(rawDetails),
 		}
 
 		startColumn, hasStartColumn, err := optionalAnnotationInt(fields, i, "start_column")
@@ -489,11 +533,18 @@ func optionalAnnotationInt(fields map[string]any, index int, key string) (int, b
 	return value, true, nil
 }
 
-// stringField reads an optional string field, treating a wrong type as absent
-// rather than failing: every field read through it is cosmetic.
-func stringField(fields map[string]any, key string) string {
-	value, _ := fields[key].(string)
-	return value
+// optionalAnnotationString reads an optional string annotation field, reporting
+// a wrong type as an error rather than silently discarding the caller's value.
+func optionalAnnotationString(fields map[string]any, index int, key string) (string, error) {
+	raw, ok := fields[key]
+	if !ok || raw == nil {
+		return "", nil
+	}
+	value, ok := raw.(string)
+	if !ok {
+		return "", fmt.Errorf("output_annotations[%d].%s must be a string", index, key)
+	}
+	return value, nil
 }
 
 // identityChecksLabel is the no-op label used by checks_write, whose results

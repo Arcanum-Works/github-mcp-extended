@@ -307,6 +307,7 @@ func Test_ChecksWrite(t *testing.T) {
 			"external_id":    "gate-run-7",
 			"started_at":     "2026-08-25T10:00:00Z",
 			"completed_at":   "2026-08-25T10:04:00Z",
+			"output_title":   "Gate report",
 			"output_summary": "green",
 			"output_text":    "the full detail",
 		})
@@ -333,8 +334,29 @@ func Test_ChecksWrite(t *testing.T) {
 		assert.Contains(t, getErrorResult(t, result).Text, "started_at must be an RFC3339 timestamp")
 	})
 
-	t.Run("update_check_run rejects started_at rather than silently dropping it", func(t *testing.T) {
-		client := mustNewGHClient(t, NewMockedHTTPClient())
+	t.Run("update_check_run sends started_at, which go-github's option struct omits", func(t *testing.T) {
+		client := mustNewGHClient(t, NewMockedHTTPClient(
+			WithRequestMatchHandler(patchReposCheckRunsByOwnerByRepoByCheckRunID,
+				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					assert.Equal(t, "/repos/owner/repo/check-runs/42", r.URL.Path)
+
+					var payload map[string]any
+					require.NoError(t, json.NewDecoder(r.Body).Decode(&payload))
+					// The whole point of updateCheckRunRequest: GitHub's PATCH
+					// endpoint documents started_at, go-github's
+					// UpdateCheckRunOptions has no field for it, and the
+					// caller's value must still reach the wire.
+					assert.Equal(t, "2026-08-25T10:00:00Z", payload["started_at"])
+					assert.Equal(t, "in_progress", payload["status"])
+
+					w.WriteHeader(http.StatusOK)
+					_, _ = w.Write(MustMarshal(&github.CheckRun{
+						ID:     github.Ptr(int64(42)),
+						Status: github.Ptr("in_progress"),
+					}))
+				}),
+			),
+		))
 		deps := BaseDeps{Client: client}
 		handler := serverTool.Handler(deps)
 
@@ -343,11 +365,63 @@ func Test_ChecksWrite(t *testing.T) {
 			"owner":        "owner",
 			"repo":         "repo",
 			"check_run_id": float64(42),
+			"status":       "in_progress",
 			"started_at":   "2026-08-25T10:00:00Z",
 		})
 		result, err := handler(ContextWithDeps(context.Background(), deps), &request)
 		require.NoError(t, err)
-		assert.Contains(t, getErrorResult(t, result).Text, "started_at is only accepted by create_check_run")
+		require.False(t, result.IsError)
+
+		var run MinimalCheckRun
+		require.NoError(t, json.Unmarshal([]byte(getTextResult(t, result).Text), &run))
+		assert.Equal(t, "in_progress", run.Status)
+	})
+
+	t.Run("output without a title and summary is rejected before any API call", func(t *testing.T) {
+		client := mustNewGHClient(t, NewMockedHTTPClient())
+		deps := BaseDeps{Client: client}
+		handler := serverTool.Handler(deps)
+
+		request := createMCPRequest(map[string]any{
+			"method":      "create_check_run",
+			"owner":       "owner",
+			"repo":        "repo",
+			"name":        "arcanum/gate",
+			"head_sha":    "abc123",
+			"output_text": "detail with no heading",
+		})
+		result, err := handler(ContextWithDeps(context.Background(), deps), &request)
+		require.NoError(t, err)
+		assert.Contains(t, getErrorResult(t, result).Text, "output_title and output_summary are both required")
+	})
+
+	t.Run("a wrongly typed annotation title is rejected rather than discarded", func(t *testing.T) {
+		client := mustNewGHClient(t, NewMockedHTTPClient())
+		deps := BaseDeps{Client: client}
+		handler := serverTool.Handler(deps)
+
+		request := createMCPRequest(map[string]any{
+			"method":         "create_check_run",
+			"owner":          "owner",
+			"repo":           "repo",
+			"name":           "arcanum/gate",
+			"head_sha":       "abc123",
+			"output_title":   "Gate report",
+			"output_summary": "one finding",
+			"output_annotations": []any{
+				map[string]any{
+					"path":             "main.go",
+					"start_line":       float64(1),
+					"end_line":         float64(1),
+					"annotation_level": "notice",
+					"message":          "noted",
+					"title":            float64(7),
+				},
+			},
+		})
+		result, err := handler(ContextWithDeps(context.Background(), deps), &request)
+		require.NoError(t, err)
+		assert.Contains(t, getErrorResult(t, result).Text, "output_annotations[0].title must be a string")
 	})
 
 	t.Run("create_check_run sends annotations", func(t *testing.T) {
@@ -395,12 +469,14 @@ func Test_ChecksWrite(t *testing.T) {
 		handler := serverTool.Handler(deps)
 
 		request := createMCPRequest(map[string]any{
-			"method":     "create_check_run",
-			"owner":      "owner",
-			"repo":       "repo",
-			"name":       "arcanum/gate",
-			"head_sha":   "abc123",
-			"conclusion": "failure",
+			"method":         "create_check_run",
+			"owner":          "owner",
+			"repo":           "repo",
+			"name":           "arcanum/gate",
+			"head_sha":       "abc123",
+			"conclusion":     "failure",
+			"output_title":   "Gate report",
+			"output_summary": "2 findings",
 			"output_annotations": []any{
 				map[string]any{
 					"path":             "pkg/github/checks_write.go",
@@ -451,10 +527,12 @@ func Test_ChecksWrite(t *testing.T) {
 		handler := serverTool.Handler(deps)
 
 		request := createMCPRequest(map[string]any{
-			"method":       "update_check_run",
-			"owner":        "owner",
-			"repo":         "repo",
-			"check_run_id": float64(42),
+			"method":         "update_check_run",
+			"owner":          "owner",
+			"repo":           "repo",
+			"check_run_id":   float64(42),
+			"output_title":   "Gate report",
+			"output_summary": "1 finding",
 			"output_annotations": []any{
 				map[string]any{
 					"path":             "main.go",
@@ -476,11 +554,13 @@ func Test_ChecksWrite(t *testing.T) {
 		handler := serverTool.Handler(deps)
 
 		request := createMCPRequest(map[string]any{
-			"method":   "create_check_run",
-			"owner":    "owner",
-			"repo":     "repo",
-			"name":     "arcanum/gate",
-			"head_sha": "abc123",
+			"method":         "create_check_run",
+			"owner":          "owner",
+			"repo":           "repo",
+			"name":           "arcanum/gate",
+			"head_sha":       "abc123",
+			"output_title":   "Gate report",
+			"output_summary": "findings",
 			"output_annotations": []any{
 				map[string]any{
 					"path":             "main.go",
@@ -504,11 +584,13 @@ func Test_ChecksWrite(t *testing.T) {
 		handler := serverTool.Handler(deps)
 
 		request := createMCPRequest(map[string]any{
-			"method":   "create_check_run",
-			"owner":    "owner",
-			"repo":     "repo",
-			"name":     "arcanum/gate",
-			"head_sha": "abc123",
+			"method":         "create_check_run",
+			"owner":          "owner",
+			"repo":           "repo",
+			"name":           "arcanum/gate",
+			"head_sha":       "abc123",
+			"output_title":   "Gate report",
+			"output_summary": "findings",
 			"output_annotations": []any{
 				map[string]any{
 					"path":             "main.go",
@@ -529,11 +611,13 @@ func Test_ChecksWrite(t *testing.T) {
 		handler := serverTool.Handler(deps)
 
 		request := createMCPRequest(map[string]any{
-			"method":   "create_check_run",
-			"owner":    "owner",
-			"repo":     "repo",
-			"name":     "arcanum/gate",
-			"head_sha": "abc123",
+			"method":         "create_check_run",
+			"owner":          "owner",
+			"repo":           "repo",
+			"name":           "arcanum/gate",
+			"head_sha":       "abc123",
+			"output_title":   "Gate report",
+			"output_summary": "findings",
 			"output_annotations": []any{
 				map[string]any{
 					"path":             "main.go",
@@ -556,11 +640,13 @@ func Test_ChecksWrite(t *testing.T) {
 		handler := serverTool.Handler(deps)
 
 		request := createMCPRequest(map[string]any{
-			"method":   "create_check_run",
-			"owner":    "owner",
-			"repo":     "repo",
-			"name":     "arcanum/gate",
-			"head_sha": "abc123",
+			"method":         "create_check_run",
+			"owner":          "owner",
+			"repo":           "repo",
+			"name":           "arcanum/gate",
+			"head_sha":       "abc123",
+			"output_title":   "Gate report",
+			"output_summary": "findings",
 			"output_annotations": []any{
 				map[string]any{
 					"path":             "main.go",
@@ -598,6 +684,8 @@ func Test_ChecksWrite(t *testing.T) {
 			"repo":               "repo",
 			"name":               "arcanum/gate",
 			"head_sha":           "abc123",
+			"output_title":       "Gate report",
+			"output_summary":     "many findings",
 			"output_annotations": entries,
 		})
 		result, err := handler(ContextWithDeps(context.Background(), deps), &request)

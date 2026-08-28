@@ -131,7 +131,7 @@
         "type": "string"
       },
       "started_at": {
-        "description": "When the check run began, as an RFC3339 timestamp (e.g. '2026-08-25T10:00:00Z'). Accepted by 'create_check_run' only — GitHub's update endpoint does not take it, and passing it to 'update_check_run' is rejected rather than silently dropped.",
+        "description": "When the check run began, as an RFC3339 timestamp (e.g. '2026-08-25T10:00:00Z'). Accepted by both methods.",
         "type": "string"
       },
       "status": {

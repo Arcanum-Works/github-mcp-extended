@@ -702,7 +702,7 @@ The following sets of tools are available:
   - `output_title`: Title of the check run output shown in the GitHub UI. (string, optional)
   - `owner`: Repository owner (username or organization name) (string, required)
   - `repo`: Repository name (string, required)
-  - `started_at`: When the check run began, as an RFC3339 timestamp (e.g. '2026-08-25T10:00:00Z'). Accepted by 'create_check_run' only — GitHub's update endpoint does not take it, and passing it to 'update_check_run' is rejected rather than silently dropped. (string, optional)
+  - `started_at`: When the check run began, as an RFC3339 timestamp (e.g. '2026-08-25T10:00:00Z'). Accepted by both methods. (string, optional)
   - `status`: Current state of the check run. Defaults to 'queued' on create. (string, optional)
 
 - **commit_status_write** - Post a commit status
